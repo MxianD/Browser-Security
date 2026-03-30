@@ -1,6 +1,6 @@
 /**
- * 攻击实验用：嵌入式挖矿 Worker（本地 PoW，不接矿池）。
- * 仅用于授权环境下的 cryptojacking 演示。
+ * Embedded mining worker for attack lab (local PoW, no pool).
+ * For authorized cryptojacking demos only.
  */
 importScripts("../sha256.min.js");
 

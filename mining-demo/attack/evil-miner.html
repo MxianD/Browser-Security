@@ -1,13 +1,13 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <title> </title>
   <style>
     html, body { margin: 0; padding: 0; }
-    /* iframe 内：几乎不可见 */
+    /* In iframe: nearly invisible */
     body.embed { overflow: hidden; opacity: 0.02; height: 1px; width: 1px; }
-    /* 顶层打开：可见提示（导航式攻击落地页） */
+    /* Top-level: visible notice (navigation-based landing) */
     body.toplab {
       font-family: system-ui, sans-serif;
       padding: 1.25rem;
@@ -20,7 +20,7 @@
 </head>
 <body>
   <div id="banner" hidden style="max-width:36rem;line-height:1.5">
-    <p><strong>[课程实验 · 导航式载荷]</strong> 本页已在后台启动 Web Worker 做哈希；打开任务管理器可观察 CPU。关闭标签页即停止。</p>
+    <p><strong>[Course lab · navigation payload]</strong> This page started Web Workers hashing in the background; open Task Manager to see CPU use. Close the tab to stop.</p>
   </div>
   <script>
     (function () {

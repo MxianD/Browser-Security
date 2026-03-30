@@ -8,7 +8,7 @@ function dsha256(u8) {
   return new Uint8Array(sha256.arrayBuffer(new Uint8Array(mid)));
 }
 
-/** Bitcoin Stratum：difficulty 1 对应目标 */
+/** Bitcoin Stratum: difficulty 1 target */
 const DIFF1_TARGET =
   0x00000000ffff0000000000000000000000000000000000000000000000000000n;
 
@@ -30,7 +30,7 @@ function hashBelowTarget(hash, target) {
   return h < target;
 }
 
-/** throttle 1–10：单批 nonce 数上限 + 批间让出时长，防止长时间占满核心 */
+/** throttle 1–10: max nonces per batch + sleep between batches to avoid pinning a core */
 function batchSizeFromThrottle(t) {
   const x = Math.max(1, Math.min(10, t | 0));
   return Math.min(500, 40 + x * 48);

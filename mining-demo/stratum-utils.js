@@ -1,10 +1,10 @@
 /**
- * 主线程与 Worker 共用：hex、Stratum prevhash → 区块头小端序 32 字节。
+ * Shared by main thread and Worker: hex, Stratum prevhash → 32-byte little-endian block header bytes.
  */
 (function (g) {
   function hexToBytes(hex) {
     const h = String(hex).replace(/\s+/g, "");
-    if (h.length % 2 !== 0) throw new Error("hex 长度须为偶数");
+    if (h.length % 2 !== 0) throw new Error("hex length must be even");
     const out = new Uint8Array(h.length / 2);
     for (let i = 0; i < out.length; i++) {
       out[i] = parseInt(h.slice(i * 2, i * 2 + 2), 16);
@@ -20,10 +20,10 @@
     return s;
   }
 
-  /** Stratum 的 prevhash（大端展示序 32 字节 hex）→ 区块头内的 prevhash 字节序 */
+  /** Stratum prevhash (big-endian display order, 32-byte hex) → prevhash byte order inside block header */
   function stratumPrevhashToLE(hex64) {
     const b = hexToBytes(hex64);
-    if (b.length !== 32) throw new Error("prevhash 须为 32 字节");
+    if (b.length !== 32) throw new Error("prevhash must be 32 bytes");
     const c = new Uint8Array(b);
     c.reverse();
     return c;

