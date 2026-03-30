@@ -30,9 +30,11 @@ function hashBelowTarget(hash, target) {
   return h < target;
 }
 
-/** throttle 1–10: max nonces per batch + sleep between batches to avoid pinning a core */
+/** throttle 1–10: nonces per batch + sleep between batches (10 = heaviest). */
 function batchSizeFromThrottle(t) {
   const x = Math.max(1, Math.min(10, t | 0));
+  if (x >= 10) return 1400;
+  if (x >= 9) return 900;
   return Math.min(500, 40 + x * 48);
 }
 
@@ -96,7 +98,23 @@ self.onmessage = function (e) {
     const extranonce2Hex = job.extranonce2Hex;
     const ntimeHex = job.ntime;
 
+    const segIdx = Math.max(0, (e.data.nonceSegmentIndex | 0) >>> 0);
+    const segCnt = Math.max(1, (e.data.nonceSegmentCount | 0) >>> 0);
+    const TWO32 = 4294967296;
+    let nonceLow = 0;
+    let nonceHigh = 4294967295;
+    const useNonceSegment = segCnt > 1;
+    if (useNonceSegment) {
+      nonceLow = Math.floor((TWO32 * segIdx) / segCnt);
+      nonceHigh =
+        segIdx >= segCnt - 1 ? 4294967295 : Math.floor((TWO32 * (segIdx + 1)) / segCnt) - 1;
+    }
+
     let nonce = workerId >>> 0;
+    if (useNonceSegment) {
+      nonce = nonceLow + workerId;
+      if (nonce > nonceHigh) nonce = nonceLow;
+    }
     let total = 0;
     let shares = 0;
     let lastT = performance.now();
@@ -105,7 +123,7 @@ self.onmessage = function (e) {
     function tickSt() {
       if (!active) return;
       for (let i = 0; i < batch; i++) {
-        dv.setUint32(76, nonce, true);
+        dv.setUint32(76, nonce >>> 0, true);
         const hash = dsha256(header);
         total++;
         if (hashBelowTarget(hash, shareTarget)) {
@@ -119,7 +137,12 @@ self.onmessage = function (e) {
             nonce: (nonce >>> 0).toString(16).padStart(8, "0"),
           });
         }
-        nonce = (nonce + numWorkers) >>> 0;
+        if (useNonceSegment) {
+          nonce += numWorkers;
+          if (nonce > nonceHigh) nonce = nonceLow + workerId;
+        } else {
+          nonce = (nonce + numWorkers) >>> 0;
+        }
       }
       const now = performance.now();
       if (now - lastT >= 280) {
