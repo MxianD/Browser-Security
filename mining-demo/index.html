@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Stratum 挖矿（浏览器）</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --panel: #1a2332;
+      --text: #e7ecf3;
+      --muted: #8b9cb3;
+      --warn-bg: #3d2914;
+      --warn-border: #c9a227;
+      --accent: #3d8bfd;
+      --danger: #e85d5d;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+    .banner {
+      background: var(--warn-bg);
+      border-bottom: 3px solid var(--warn-border);
+      padding: 1rem 1.25rem;
+      font-size: 0.95rem;
+    }
+    .banner strong { color: #f5e6a3; }
+    main {
+      max-width: 42rem;
+      margin: 0 auto;
+      padding: 2rem 1.25rem;
+    }
+    h1 { font-size: 1.35rem; font-weight: 600; margin: 0 0 0.5rem; }
+    .sub { color: var(--muted); font-size: 0.9rem; margin-bottom: 1.75rem; }
+    .panel {
+      background: var(--panel);
+      border-radius: 10px;
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 1.25rem;
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+    label { display: block; font-size: 0.85rem; color: var(--muted); margin-bottom: 0.35rem; }
+    input[type="range"] { width: 100%; }
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      align-items: center;
+      margin-top: 1rem;
+    }
+    button {
+      font: inherit;
+      padding: 0.55rem 1.1rem;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
+    #start { background: var(--accent); color: #fff; }
+    #stop { background: var(--danger); color: #fff; }
+    .stats {
+      font-family: ui-monospace, monospace;
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-top: 0.75rem;
+    }
+    .stats strong { color: var(--text); }
+    .ok { color: #6bcf7f; }
+    ul { color: var(--muted); font-size: 0.9rem; padding-left: 1.25rem; }
+    .err { color: #e85d5d; font-size: 0.9rem; margin-top: 0.5rem; }
+    .stratum-log {
+      width: 100%;
+      min-height: 11rem;
+      max-height: 22rem;
+      font-family: ui-monospace, monospace;
+      font-size: 0.72rem;
+      line-height: 1.35;
+      background: #0d1117;
+      color: #c9d1d9;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+      padding: 0.65rem 0.75rem;
+      resize: vertical;
+      margin-top: 0.5rem;
+    }
+    .stratum-field {
+      width: 100%;
+      padding: 0.45rem 0.6rem;
+      border-radius: 6px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: #0d1117;
+      color: var(--text);
+      font: inherit;
+    }
+    .stratum-grid {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 0.5rem 0.75rem;
+      align-items: end;
+      margin-top: 0.75rem;
+    }
+    .stratum-grid label { margin: 0; }
+    .hint { font-size: 0.82rem; color: var(--muted); margin: 0.35rem 0 0; }
+    .btn-muted { background: #2d3a4d; color: var(--text); }
+    #stratumHint { font-size: 0.85rem; color: var(--muted); margin-top: 0.5rem; min-height: 1.25em; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Stratum 挖矿（浏览器）</h1>
+    <p class="sub">仅通过 Stratum 连接矿池，对矿池下发的任务做 double SHA-256，份额目标为 <code>hash &lt; diff1÷difficulty</code>。请用<strong>本地 HTTP 服务</strong>打开本页（见下方），否则 Worker 无法加载脚本。浏览器算力有限，收益可忽略；已限制 Worker 与单批算量以防拖垮本机。</p>
+
+    <div class="panel">
+      <label for="workers">Worker 数量（上限 4，减轻 CPU 压力）</label>
+      <input type="range" id="workers" min="1" max="4" value="1" />
+      <div class="stats" id="workersVal">当前：1 个 Worker</div>
+
+      <label for="throttle" style="margin-top:1rem">负载限制（1 最省 CPU、10 最猛；低数值会加长批间休眠）</label>
+      <input type="range" id="throttle" min="1" max="10" value="1" />
+      <div class="stats" id="throttleVal">当前：1 / 10</div>
+      <p class="stats" id="cpuHint" style="margin-top:0.35rem"></p>
+
+      <label style="display:flex;align-items:center;gap:0.5rem;margin-top:1rem;cursor:pointer;font-size:0.9rem;color:var(--text)">
+        <input type="checkbox" id="stratumAutoSubmit" checked />
+        找到有效 share 时自动 mining.submit
+      </label>
+
+      <div class="row">
+        <button type="button" id="start">开始挖矿</button>
+        <button type="button" id="stop" disabled>停止</button>
+      </div>
+      <div class="stats" id="status">状态：<span class="ok">空闲</span></div>
+      <div class="stats" id="live">
+        总哈希（累计）：<strong id="totalHashes">0</strong><br />
+        合计算力：<strong id="hashrate">0 H/s</strong><br />
+        有效 share 次数：<strong id="shareCount">0</strong>
+      </div>
+      <p class="err" id="workerErr" hidden></p>
+    </div>
+
+    <div class="panel">
+      <h2 style="font-size:1.05rem; font-weight:600; margin:0 0 0.35rem;">连接矿池（需本地代理）</h2>
+      <p class="hint">浏览器无法直连矿池 TCP。先运行 <code>node stratum-proxy.js</code>（需 <code>npm install</code>），再连 WebSocket 与矿池，完成 subscribe / authorize，收到 <code>mining.notify</code> 后即可在上方开始挖矿。</p>
+
+      <div class="stratum-grid" style="grid-template-columns:1fr;">
+        <label for="wsUrl">代理 WebSocket（勿在浏览器地址栏打开）</label>
+        <input type="text" id="wsUrl" class="stratum-field" value="ws://127.0.0.1:8787" autocomplete="off" />
+        <p class="hint" style="margin-top:0.35rem">请先用 <strong>http://</strong> 打开本页（如 <code>http://127.0.0.1:8080</code>），再在此框填 <code>ws://…</code> 并点「连接代理」。地址栏输入 <code>ws://</code> 会报错。</p>
+      </div>
+      <div class="row" style="margin-top:0.65rem">
+        <button type="button" id="stratumWsConnect" class="btn-muted">连接代理</button>
+        <button type="button" id="stratumWsDisconnect" class="btn-muted" disabled>断开代理</button>
+      </div>
+
+      <div class="stratum-grid">
+        <label for="poolHost">矿池主机（Stratum TCP）</label>
+        <label for="poolPort" style="grid-column:2">端口</label>
+        <input type="text" id="poolHost" class="stratum-field" placeholder="例如矿池域名" autocomplete="off" />
+        <input type="number" id="poolPort" class="stratum-field" style="max-width:6.5rem" value="3333" min="1" max="65535" />
+      </div>
+      <div class="row">
+        <button type="button" id="stratumTcpConnect" class="btn-muted" disabled>连接矿池</button>
+        <button type="button" id="stratumTcpDisconnect" class="btn-muted" disabled>断开矿池</button>
+      </div>
+
+      <div class="stratum-grid" style="grid-template-columns:1fr 1fr; margin-top:1rem">
+        <div>
+          <label for="stratumWorker">Worker（mining.authorize）</label>
+          <input type="text" id="stratumWorker" class="stratum-field" placeholder="地址.工人名 或矿池要求格式" autocomplete="off" />
+        </div>
+        <div>
+          <label for="stratumPass">密码</label>
+          <input type="text" id="stratumPass" class="stratum-field" placeholder="常见为 x" value="x" autocomplete="off" />
+        </div>
+      </div>
+      <div class="row">
+        <button type="button" id="stratumSubscribe" class="btn-muted" disabled>发送 mining.subscribe</button>
+        <button type="button" id="stratumAuthorize" class="btn-muted" disabled>发送 mining.authorize</button>
+        <button type="button" id="stratumLogClear" class="btn-muted">清空日志</button>
+      </div>
+
+      <textarea id="stratumLog" class="stratum-log" readonly spellcheck="false" aria-label="Stratum 日志"></textarea>
+      <p id="stratumHint"></p>
+    </div>
+
+    <div class="panel">
+      <p style="margin:0 0 0.5rem; font-size:0.9rem;">如何打开：</p>
+      <ul>
+        <li>在<strong>项目上级目录</strong>（含 <code>mining-demo</code> 文件夹的那一层）执行：<code>python -m http.server 8080 --bind 127.0.0.1</code>（加 <code>--bind 127.0.0.1</code> 可避免 Windows 下只监听 IPv6 导致 <code>127.0.0.1</code> 出现 ERR_EMPTY_RESPONSE）。浏览器打开：<code>http://127.0.0.1:8080/mining-demo/index.html</code>。</li>
+        <li>若未加 <code>--bind</code> 且打不开，可试：<code>http://[::1]:8080/mining-demo/index.html</code>。</li>
+        <li>另开终端：<code>npm install</code> 后 <code>node stratum-proxy.js</code>。</li>
+        <li>机器发烫或卡顿时：先点「停止」，把 Worker 减为 1、负载限制调低。</li>
+        <li>矿池若要求 TLS，本代理仅支持明文 TCP，需换端口或自行扩展代理。</li>
+      </ul>
+    </div>
+  </main>
+
+  <script src="stratum-utils.js"></script>
+  <script>
+    const workersSlider = document.getElementById("workers");
+    const throttleSlider = document.getElementById("throttle");
+    const workersVal = document.getElementById("workersVal");
+    const throttleVal = document.getElementById("throttleVal");
+    const cpuHintEl = document.getElementById("cpuHint");
+    const btnStart = document.getElementById("start");
+    const btnStop = document.getElementById("stop");
+    const status = document.getElementById("status");
+    const totalHashesEl = document.getElementById("totalHashes");
+    const hashrateEl = document.getElementById("hashrate");
+    const shareCountEl = document.getElementById("shareCount");
+    const workerErr = document.getElementById("workerErr");
+
+    const stratumState = {
+      subscribeOk: false,
+      extranonce1: "",
+      extranonce2Size: 4,
+      jobId: "",
+      prevhash: "",
+      coinb1: "",
+      coinb2: "",
+      merkleBranches: [],
+      version: "",
+      nbits: "",
+      ntime: "",
+      difficulty: 1,
+      cleanJobs: false,
+    };
+    let stratumMiningActive = false;
+
+    function stratumJobReady() {
+      if (!stratumState.subscribeOk) return false;
+      if (!stratumState.jobId || !stratumState.prevhash) return false;
+      if (stratumState.coinb1 == null || stratumState.coinb1 === "" || stratumState.coinb2 == null || stratumState.coinb2 === "") return false;
+      if (!Array.isArray(stratumState.merkleBranches)) return false;
+      return true;
+    }
+
+    function makeExtranonce2Hex(size, workerIndex) {
+      const u = new Uint8Array(size);
+      crypto.getRandomValues(u);
+      u[0] = (u[0] ^ (workerIndex & 255)) & 255;
+      return StratumUtils.bytesToHex(u);
+    }
+
+    function syncLabels() {
+      workersVal.textContent = "当前：" + workersSlider.value + " 个 Worker";
+      throttleVal.textContent = "当前：" + throttleSlider.value + " / 10";
+    }
+    workersSlider.addEventListener("input", syncLabels);
+    throttleSlider.addEventListener("input", syncLabels);
+    syncLabels();
+    (function cpuHint() {
+      const hc = navigator.hardwareConcurrency || 4;
+      const suggest = Math.max(1, Math.floor(hc / 2));
+      cpuHintEl.textContent =
+        "本机约 " + hc + " 逻辑处理器，建议 Worker ≤ " + suggest + "；卡顿请调低负载或 Worker。";
+    })();
+
+    const workerScriptUrl = new URL("miner-worker.js", document.baseURI || location.href).href;
+    let pool = [];
+    const perWorker = new Map();
+
+    function formatRate(rate) {
+      if (rate >= 1e6) return (rate / 1e6).toFixed(2) + " MH/s";
+      if (rate >= 1e3) return (rate / 1e3).toFixed(2) + " kH/s";
+      return rate.toFixed(0) + " H/s";
+    }
+
+    function refreshUi() {
+      let sumRate = 0;
+      let sumShares = 0;
+      for (const s of perWorker.values()) {
+        sumRate += s.rate;
+        sumShares += s.shares;
+      }
+      const approxTotal = Array.from(perWorker.values()).reduce((a, s) => a + s.total, 0);
+      totalHashesEl.textContent = approxTotal.toLocaleString("zh-CN");
+      hashrateEl.textContent = formatRate(sumRate);
+      shareCountEl.textContent = sumShares.toLocaleString("zh-CN");
+    }
+
+    function setRunning(running) {
+      btnStart.disabled = running;
+      btnStop.disabled = !running;
+      workersSlider.disabled = running;
+      throttleSlider.disabled = running;
+      const autoEl = document.getElementById("stratumAutoSubmit");
+      if (autoEl) autoEl.disabled = running;
+      if (running) {
+        status.innerHTML =
+          '状态：<span style="color:#f0c674">运行中（Stratum，share 目标 diff1÷difficulty）</span>';
+      } else {
+        status.innerHTML = '状态：<span class="ok">空闲</span>';
+        stratumMiningActive = false;
+      }
+      if (!running) {
+        perWorker.clear();
+        totalHashesEl.textContent = "0";
+        hashrateEl.textContent = "0 H/s";
+        shareCountEl.textContent = "0";
+      }
+    }
+
+    function handleMinerMessage(ev) {
+      if (!ev.data) return;
+      if (ev.data.type === "stats") {
+        perWorker.set(ev.data.workerId, {
+          total: ev.data.total,
+          rate: ev.data.rate,
+          shares: ev.data.shares,
+        });
+        refreshUi();
+        return;
+      }
+      if (ev.data.type === "stratum_share") {
+        const auto = document.getElementById("stratumAutoSubmit");
+        if (auto && auto.checked) stratumSendMiningSubmit(ev.data);
+        appendStratumLog(
+          "· ",
+          "[share: hash<diff1/d] job=" + ev.data.jobId + " nonce=" + ev.data.nonce
+        );
+      }
+    }
+
+    function stratumSendMiningSubmit(payload) {
+      const user = (document.getElementById("stratumWorker").value || "").trim();
+      if (!user) return;
+      if (!stratumWs || stratumWs.readyState !== WebSocket.OPEN) return;
+      const line = JSON.stringify({
+        id: stratumRpcId++,
+        method: "mining.submit",
+        params: [user, payload.jobId, payload.extranonce2, payload.ntime, payload.nonce],
+      });
+      stratumWs.send(JSON.stringify({ type: "stratum_send", line }));
+      appendStratumLog("→ ", line);
+    }
+
+    function startStratumWorkersOnly(count, throttle) {
+      const size = stratumState.extranonce2Size | 0;
+      if (size < 1 || size > 32) throw new Error("无效的 extranonce2_size，请重新 subscribe");
+
+      for (let i = 0; i < count; i++) {
+        const w = new Worker(workerScriptUrl);
+        w.onmessage = handleMinerMessage;
+        w.onerror = function (err) {
+          workerErr.hidden = false;
+          workerErr.textContent =
+            "Worker 错误（若直接双击打开 HTML，请改用本地 HTTP 服务）：" +
+            (err.message || "无法加载脚本");
+        };
+        w.postMessage({
+          cmd: "startStratum",
+          workerId: i,
+          numWorkers: count,
+          throttle: throttle,
+          difficulty: stratumState.difficulty || 1,
+          job: {
+            jobId: stratumState.jobId,
+            prevhash: stratumState.prevhash,
+            coinb1: stratumState.coinb1,
+            coinb2: stratumState.coinb2,
+            merkleBranches: stratumState.merkleBranches,
+            version: stratumState.version,
+            nbits: stratumState.nbits,
+            ntime: stratumState.ntime,
+            extranonce1: stratumState.extranonce1,
+            extranonce2Hex: makeExtranonce2Hex(size, i),
+          },
+        });
+        pool.push(w);
+      }
+    }
+
+    function restartStratumMinersIfNeeded() {
+      if (!stratumMiningActive) return;
+      if (!stratumJobReady()) return;
+      pool.forEach(function (w) {
+        try {
+          w.postMessage({ cmd: "stop" });
+          w.terminate();
+        } catch (_) {}
+      });
+      pool = [];
+      perWorker.clear();
+      const count = parseInt(workersSlider.value, 10);
+      const throttle = parseInt(throttleSlider.value, 10);
+      try {
+        startStratumWorkersOnly(count, throttle);
+      } catch (e) {
+        workerErr.hidden = false;
+        workerErr.textContent = String(e.message || e);
+      }
+    }
+
+    function handleStratumLine(j) {
+      if (!j || typeof j !== "object") return;
+      if (j.method === "mining.notify") {
+        const p = j.params;
+        if (!Array.isArray(p) || p.length < 8) return;
+        stratumState.jobId = p[0];
+        stratumState.prevhash = p[1];
+        stratumState.coinb1 = p[2];
+        stratumState.coinb2 = p[3];
+        stratumState.merkleBranches = p[4];
+        stratumState.version = p[5];
+        stratumState.nbits = p[6];
+        stratumState.ntime = p[7];
+        stratumState.cleanJobs = !!p[8];
+        restartStratumMinersIfNeeded();
+        return;
+      }
+      if (j.method === "mining.set_difficulty" && j.params && j.params.length) {
+        stratumState.difficulty = Number(j.params[0]) || 1;
+        restartStratumMinersIfNeeded();
+        return;
+      }
+      if (j.result !== undefined && j.error == null && Array.isArray(j.result) && j.result.length >= 3) {
+        const en1 = j.result[1];
+        const en2n = Number(j.result[2]);
+        if (typeof en1 === "string" && Number.isFinite(en2n) && en2n >= 0 && en2n <= 32) {
+          stratumState.extranonce1 = en1;
+          stratumState.extranonce2Size = en2n;
+          stratumState.subscribeOk = true;
+        }
+      }
+    }
+
+    btnStart.addEventListener("click", () => {
+      workerErr.hidden = true;
+      workerErr.textContent = "";
+      const count = Math.min(4, Math.max(1, parseInt(workersSlider.value, 10)));
+      const throttle = parseInt(throttleSlider.value, 10);
+      pool = [];
+      perWorker.clear();
+
+      if (!stratumJobReady()) {
+        workerErr.hidden = false;
+        workerErr.textContent =
+          "任务未就绪：请先连接矿池并完成 subscribe、authorize，且已收到 mining.notify。";
+        return;
+      }
+      stratumMiningActive = true;
+      try {
+        startStratumWorkersOnly(count, throttle);
+      } catch (err) {
+        stratumMiningActive = false;
+        workerErr.hidden = false;
+        workerErr.textContent = String(err.message || err);
+        return;
+      }
+      setRunning(true);
+    });
+
+    btnStop.addEventListener("click", () => {
+      pool.forEach((w) => {
+        try {
+          w.postMessage({ cmd: "stop" });
+          w.terminate();
+        } catch (_) {}
+      });
+      pool = [];
+      setRunning(false);
+    });
+
+    window.addEventListener("beforeunload", () => {
+      pool.forEach((w) => {
+        try {
+          w.terminate();
+        } catch (_) {}
+      });
+      if (stratumWs && stratumWs.readyState === WebSocket.OPEN) {
+        try {
+          stratumWs.close();
+        } catch (_) {}
+      }
+    });
+
+    /* ---- Stratum 演示（经本地 stratum-proxy.js）---- */
+    const stratumWsConnect = document.getElementById("stratumWsConnect");
+    const stratumWsDisconnect = document.getElementById("stratumWsDisconnect");
+    const stratumTcpConnect = document.getElementById("stratumTcpConnect");
+    const stratumTcpDisconnect = document.getElementById("stratumTcpDisconnect");
+    const stratumSubscribe = document.getElementById("stratumSubscribe");
+    const stratumAuthorize = document.getElementById("stratumAuthorize");
+    const stratumLogClear = document.getElementById("stratumLogClear");
+    const wsUrlInput = document.getElementById("wsUrl");
+    const poolHostInput = document.getElementById("poolHost");
+    const poolPortInput = document.getElementById("poolPort");
+    const stratumWorkerInput = document.getElementById("stratumWorker");
+    const stratumPassInput = document.getElementById("stratumPass");
+    const stratumLog = document.getElementById("stratumLog");
+    const stratumHint = document.getElementById("stratumHint");
+
+    let stratumWs = null;
+    let stratumRpcId = 1;
+
+    function stratumSetHint(text) {
+      stratumHint.textContent = text || "";
+    }
+
+    function appendStratumLog(prefix, text) {
+      stratumLog.value += prefix + text + "\n";
+      stratumLog.scrollTop = stratumLog.scrollHeight;
+    }
+
+    function stratumSendLine(obj) {
+      if (!stratumWs || stratumWs.readyState !== WebSocket.OPEN) return;
+      const line = typeof obj === "string" ? obj : JSON.stringify(obj);
+      stratumWs.send(JSON.stringify({ type: "stratum_send", line }));
+      appendStratumLog("→ ", line);
+    }
+
+    function parseStratumSummary(line) {
+      try {
+        const j = JSON.parse(line);
+        if (j.method === "mining.notify" && Array.isArray(j.params) && j.params.length) {
+          const jobId = j.params[0];
+          const prev = j.params[1];
+          const tail = prev && prev.length > 14 ? prev.slice(0, 14) + "…" : prev;
+          return `mining.notify：job_id=${jobId}，prevhash 前缀 ${tail}`;
+        }
+        if (j.method === "mining.set_difficulty" && j.params && j.params[0] != null) {
+          return "mining.set_difficulty：" + j.params[0];
+        }
+        if (j.result && Array.isArray(j.result) && j.result.length >= 2) {
+          const en = j.result[1];
+          if (typeof en === "string" && en.length) {
+            return "subscribe 响应：extranonce1=" + en + "（长度 " + en.length / 2 + " 字节 hex）";
+          }
+        }
+        if (j.error) {
+          return "错误：" + JSON.stringify(j.error);
+        }
+      } catch (_) {}
+      return "";
+    }
+
+    function onStratumWsMessage(ev) {
+      let data;
+      try {
+        data = JSON.parse(ev.data);
+      } catch {
+        appendStratumLog("· ", String(ev.data));
+        return;
+      }
+      if (data.type === "status") {
+        appendStratumLog("· ", (data.ok ? "[ok] " : "[×] ") + (data.message || ""));
+        return;
+      }
+      if (data.type === "stratum" && typeof data.line === "string") {
+        const line = data.line;
+        appendStratumLog("← ", line);
+        try {
+          handleStratumLine(JSON.parse(line));
+        } catch (_) {}
+        const sum = parseStratumSummary(line);
+        if (sum) stratumSetHint(sum);
+        return;
+      }
+    }
+
+    function updateStratumButtons() {
+      const wsOpen = stratumWs && stratumWs.readyState === WebSocket.OPEN;
+      stratumWsConnect.disabled = wsOpen;
+      stratumWsDisconnect.disabled = !wsOpen;
+      stratumTcpConnect.disabled = !wsOpen;
+      stratumTcpDisconnect.disabled = !wsOpen;
+      stratumSubscribe.disabled = !wsOpen;
+      stratumAuthorize.disabled = !wsOpen;
+    }
+
+    stratumWsConnect.addEventListener("click", () => {
+      const url = (wsUrlInput.value || "").trim();
+      if (!url) return;
+      try {
+        stratumWs = new WebSocket(url);
+      } catch (e) {
+        appendStratumLog("· ", "WebSocket 创建失败：" + (e.message || e));
+        return;
+      }
+      updateStratumButtons();
+      stratumWs.onopen = () => {
+        appendStratumLog("· ", "已连接本地代理 " + url);
+        updateStratumButtons();
+      };
+      stratumWs.onclose = () => {
+        appendStratumLog("· ", "与代理的 WebSocket 已关闭");
+        stratumWs = null;
+        stratumSetHint("");
+        updateStratumButtons();
+      };
+      stratumWs.onerror = () => {
+        appendStratumLog("· ", "WebSocket 错误（代理是否已启动？）");
+      };
+      stratumWs.onmessage = onStratumWsMessage;
+    });
+
+    stratumWsDisconnect.addEventListener("click", () => {
+      if (stratumWs) {
+        try {
+          stratumWs.close();
+        } catch (_) {}
+        stratumWs = null;
+      }
+      updateStratumButtons();
+    });
+
+    stratumTcpConnect.addEventListener("click", () => {
+      const host = (poolHostInput.value || "").trim();
+      const port = parseInt(poolPortInput.value, 10);
+      if (!host || !Number.isFinite(port)) return;
+      if (!stratumWs || stratumWs.readyState !== WebSocket.OPEN) return;
+      stratumWs.send(JSON.stringify({ type: "tcp_connect", host, port }));
+    });
+
+    stratumTcpDisconnect.addEventListener("click", () => {
+      if (!stratumWs || stratumWs.readyState !== WebSocket.OPEN) return;
+      stratumWs.send(JSON.stringify({ type: "tcp_disconnect" }));
+    });
+
+    stratumSubscribe.addEventListener("click", () => {
+      stratumSendLine({
+        id: stratumRpcId++,
+        method: "mining.subscribe",
+        params: ["BrowserSecurityDemo/1.0"],
+      });
+    });
+
+    stratumAuthorize.addEventListener("click", () => {
+      const user = (stratumWorkerInput.value || "").trim();
+      const pass = (stratumPassInput.value || "").trim();
+      if (!user) {
+        stratumSetHint("请填写 Worker 再 authorize。");
+        return;
+      }
+      stratumSendLine({
+        id: stratumRpcId++,
+        method: "mining.authorize",
+        params: [user, pass || "x"],
+      });
+    });
+
+    stratumLogClear.addEventListener("click", () => {
+      stratumLog.value = "";
+      stratumSetHint("");
+    });
+
+    updateStratumButtons();
+  </script>
+</body>
+</html>

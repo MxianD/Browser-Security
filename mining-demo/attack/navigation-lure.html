@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>安全更新 · 请继续（实验）</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      max-width: 28rem;
+      margin: 3rem auto;
+      padding: 1.5rem;
+      background: #f4f6f8;
+      color: #1a1a1a;
+    }
+    .box {
+      background: #fff;
+      border-radius: 10px;
+      padding: 1.5rem;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    }
+    .warn { color: #b45309; font-size: 0.9rem; margin-top: 1rem; }
+    a.btn {
+      display: inline-block;
+      margin-top: 1rem;
+      padding: 0.6rem 1.2rem;
+      background: #2563eb;
+      color: #fff;
+      text-decoration: none;
+      border-radius: 8px;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h1 style="font-size:1.15rem;margin:0 0 0.5rem;">浏览器组件需要更新</h1>
+    <p style="margin:0;font-size:0.95rem;">
+      为保障显示效果，请点击下方按钮完成「兼容模式」加载。<strong>此为课程中的导航式（navigation-based）钓鱼页演示</strong>，不采集个人信息。
+    </p>
+    <p class="warn">真实攻击中，按钮会链到全屏挖矿页或下载恶意扩展；此处仅跳转到本地 <code>evil-miner.html</code>。</p>
+    <a class="btn" href="evil-miner.html">继续</a>
+  </div>
+</body>
+</html>

