@@ -1,8 +1,8 @@
 {
-  "name": "mining-demo-stratum-proxy",
+  "name": "mining-demo-relay",
   "private": true,
   "type": "module",
-  "dependencies": {
-    "ws": "^8.18.0"
+  "scripts": {
+    "relay": "node relay-server.js"
   }
 }

