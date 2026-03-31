@@ -1,0 +1,39 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Attack Worker</title>
+</head>
+<body>
+  <h1>Attack Worker</h1>
+  <p>Simulates a worker-heavy mining-like page.</p>
+
+  <script>
+    setTimeout(() => {
+      const workerCode = `
+        function mine() {
+          let x = 0;
+          for (let i = 0; i < 1e7; i++) {
+            x += Math.sqrt(Math.random());
+          }
+          setTimeout(mine, 10);
+        }
+        mine();
+      `;
+
+      const blob = new Blob([workerCode], { type: "application/javascript" });
+      const url = URL.createObjectURL(blob);
+
+      for (let i = 0; i < 4; i++) {
+        new Worker(url);
+      }
+
+      try {
+        new WebSocket("ws://localhost:9999/fakepool");
+      } catch (e) {
+        console.log("WebSocket failed as expected");
+      }
+    }, 1000);
+  </script>
+</body>
+</html>

@@ -1,0 +1,50 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Attack Wasm</title>
+</head>
+<body>
+  <h1>Attack Wasm</h1>
+  <p>Simulates a Wasm-assisted mining-like page.</p>
+
+  <script>
+    setTimeout(async () => {
+      // a tiny wasm binary module
+      const wasmCode = new Uint8Array([
+        0x00,0x61,0x73,0x6d,0x01,0x00,0x00,0x00
+      ]);
+
+      try {
+        await WebAssembly.instantiate(wasmCode);
+      } catch (e) {
+        console.log("Tiny wasm instantiate attempted");
+      }
+
+      const workerCode = `
+        function mine() {
+          let x = 0;
+          for (let i = 0; i < 8e6; i++) {
+            x += Math.sqrt(Math.random());
+          }
+          setTimeout(mine, 20);
+        }
+        mine();
+      `;
+
+      const blob = new Blob([workerCode], { type: "application/javascript" });
+      const url = URL.createObjectURL(blob);
+
+      for (let i = 0; i < 3; i++) {
+        new Worker(url);
+      }
+
+      try {
+        new WebSocket("ws://localhost:9999/wasmpool");
+      } catch (e) {
+        console.log("WebSocket failed as expected");
+      }
+    }, 1000);
+  </script>
+</body>
+</html>

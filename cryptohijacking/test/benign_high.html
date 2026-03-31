@@ -1,0 +1,30 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Benign High</title>
+</head>
+<body>
+  <h1>Benign High</h1>
+  <p>High-computation but non-mining workload.</p>
+
+  <script>
+    setTimeout(() => {
+      const workerCode = `
+        function work() {
+          let x = 0;
+          for (let i = 0; i < 1e6; i++) {
+            x += Math.sqrt(Math.random());
+          }
+          setTimeout(work, 120);
+        }
+        work();
+      `;
+
+      const blob = new Blob([workerCode], { type: "application/javascript" });
+      const url = URL.createObjectURL(blob);
+      new Worker(url);
+    }, 1000);
+  </script>
+</body>
+</html>
