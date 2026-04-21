@@ -9,6 +9,9 @@
     status: "benign",
     reason: "none",
 
+    payloadPoisonCount: 0,
+    lastPoisonedField: "",
+
     // ---- compute / execution ----
     workerCreateCount: 0,
     liveWorkerCount: 0,
@@ -55,6 +58,40 @@
     console.warn("[DEMO] terminated all active workers", { frame: location.href });
   }
 
+  function poisonHexString(hex) {
+    const s = String(hex || "");
+    if (s.length === 0) return s;
+
+    const first = s[0].toLowerCase();
+    const replacement = first === "a" ? "b" : "a";
+    return replacement + s.slice(1);
+  }
+
+  function poisonSubmitPayload(obj) {
+    const cloned = { ...obj };
+
+    if (typeof cloned.nonce === "string" && cloned.nonce.length > 0) {
+      cloned.nonce = poisonHexString(cloned.nonce);
+      state.lastPoisonedField = "nonce";
+      return cloned;
+    }
+
+    if (typeof cloned.extranonce2 === "string" && cloned.extranonce2.length > 0) {
+      cloned.extranonce2 = poisonHexString(cloned.extranonce2);
+      state.lastPoisonedField = "extranonce2";
+      return cloned;
+    }
+
+    if (typeof cloned.jobId === "string" && cloned.jobId.length > 0) {
+      cloned.jobId = cloned.jobId + "_bad";
+      state.lastPoisonedField = "jobId";
+      return cloned;
+    }
+
+    state.lastPoisonedField = "none";
+    return cloned;
+  }
+  
   function recomputeStatus(reason = "none") {
     let score = 0;
 
@@ -225,33 +262,76 @@
   }
 
   // ---- fetch hook ----
-  const OriginalFetch = window.fetch;
-  if (OriginalFetch) {
-    window.fetch = async function (...args) {
-      let url = "";
+const OriginalFetch = window.fetch;
+if (OriginalFetch) {
+  window.fetch = async function (...args) {
+    let input = args[0];
+    let init = args[1] || {};
+
+    let url = "";
+    try {
+      if (typeof input === "string") {
+        url = input;
+      } else if (input && typeof input.url === "string") {
+        url = input.url;
+      }
+    } catch (_) {}
+
+    let absUrl = "";
+    try {
+      absUrl = url ? new URL(url, location.href).href : "";
+    } catch (_) {
+      absUrl = String(url || "");
+    }
+
+    state.fetchCount += 1;
+    state.lastFetchUrl = absUrl;
+
+    if (state.workerCreateCount >= 4 || state.liveWorkerCount >= 4) {
+      state.networkAfterCompute = true;
+    }
+
+    const isSubmit = absUrl.includes("/api/submit");
+    const highConfidence = state.score >= 8;
+
+    if (isSubmit && highConfidence) {
       try {
-        const input = args[0];
-        if (typeof input === "string") {
-          url = input;
-        } else if (input && typeof input.url === "string") {
-          url = input.url;
+        let bodyText = "";
+
+        if (typeof init.body === "string") {
+          bodyText = init.body;
+        } else if (init.body instanceof URLSearchParams) {
+          bodyText = init.body.toString();
         }
-      } catch (_) {}
 
-      let absUrl = "";
-      try {
-        absUrl = url ? new URL(url, location.href).href : "";
-      } catch (_) {
-        absUrl = String(url || "");
+        if (bodyText) {
+          const parsed = JSON.parse(bodyText);
+          const poisoned = poisonSubmitPayload(parsed);
+
+          init = {
+            ...init,
+            body: JSON.stringify(poisoned),
+            headers: {
+              ...(init.headers || {}),
+              "Content-Type": "application/json"
+            }
+          };
+
+          state.payloadPoisonCount += 1;
+
+          console.warn("[DEMO] payload poisoning applied", {
+            frame: location.href,
+            url: absUrl,
+            field: state.lastPoisonedField,
+            count: state.payloadPoisonCount
+          });
+
+          recomputeStatus("payload poisoning mitigation");
+        }
+      } catch (e) {
+        console.warn("[DEMO] payload poisoning failed, fallback to normal fetch", e);
       }
-
-      state.fetchCount += 1;
-      state.lastFetchUrl = absUrl;
-
-      if (state.workerCreateCount >= 4 || state.liveWorkerCount >= 4) {
-        state.networkAfterCompute = true;
-      }
-
+    } else {
       console.log("[DEMO] fetch observed", {
         url: absUrl,
         frame: location.href,
@@ -259,9 +339,11 @@
       });
 
       recomputeStatus("network activity after compute");
-      return OriginalFetch.apply(this, args);
-    };
-  }
+    }
+
+    return OriginalFetch.call(this, input, init);
+  };
+}
 
   // ---- XHR hook ----
   const OriginalXHROpen = XMLHttpRequest.prototype.open;
